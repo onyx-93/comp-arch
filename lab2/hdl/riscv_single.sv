@@ -327,6 +327,8 @@ module alu (input  logic [31:0] a, b,
        3'b011:  result = a | b;       // or
        3'b101:  result = sum[31] ^ v; // slt       
        3'b100:  result = a ^ b;       // xor
+
+
        
        default: result = 32'bx;
      endcase
