@@ -164,7 +164,8 @@ module aludec (input  logic       opb5,
 		  3'b010: ALUControl = 3'b101; // slt, slti
 		  3'b110: ALUControl = 3'b011; // or, ori
 		  3'b111: ALUControl = 3'b010; // and, andi
-		  3'b100: ALUControl = 3'b100; // xor, xori		  
+		  3'b100: ALUControl = 3'b100; // xor, xori	
+      3'b001: ALUControl = 3'b111; // sll (just implemented)	 ************************** 
 		  default: ALUControl = 3'bxxx; // ???
 		endcase // case (funct3)       
      endcase // case (ALUOp)
@@ -327,9 +328,8 @@ module alu (input  logic [31:0] a, b,
        3'b011:  result = a | b;       // or
        3'b101:  result = sum[31] ^ v; // slt       
        3'b100:  result = a ^ b;       // xor
+       3'b111:  result = a << b[4:0];      //sll ********************** do i want to use all the bits in  b?s
 
-
-       
        default: result = 32'bx;
      endcase
 
@@ -337,6 +337,27 @@ module alu (input  logic [31:0] a, b,
    assign v = ~(alucontrol[0] ^ a[31] ^ b[31]) & (a[31] ^ sum[31]) & isAddSub;
    
 endmodule // alu
+
+   /* My refile from lab0 */
+
+module regfile (input logic         clk, 
+		input logic 	    we3, // RegWrite
+		input logic [4:0]   rs1, rs2, rd, // rs1 (register src1); rs2 (register src2); rd (destination register)
+		input logic [31:0]  wd3, // actual data written in register file
+		output logic [31:0] rd1, rd2); // rd1 reads rs1 = SrcA; rd2 reads rs2 = SrcB only for R-type operations (when ALUSrc is low)
+   
+   logic [31:0] 		    rf[31:0];
+   
+   always_ff @(posedge clk) // This block runs on the rising edge of clk, meaning it updates the registers synchronously.
+      if (we3 && wa3!=0) rf[wa3] <= wd3; // If write enable we3 is high, the register at address wa3 is updated with wd3. If we3 is low, no write occurs.
+
+   assign rd1 = (ra1 == 5'b00000) ? 32'b0 : rf[ra1]; // If ra1 == 0, return 32'b0 (Register 0 always reads as zero). Otherwise, return the value stored in rf[ra1].
+   assign rd2 = (ra2 == 5'b00000) ? 32'b0 : rf[ra2]; // If ra2 == 0, return 32'b0 (Register 0 always reads as zero). Otherwise, return the value stored in rf[ra2].
+   
+   
+endmodule // regfile
+
+/* default regfile module
 
 module regfile (input  logic        clk, 
 		input  logic 	    we3, 
@@ -357,4 +378,4 @@ module regfile (input  logic        clk,
    assign rd1 = (a1 != 0) ? rf[a1] : 0;
    assign rd2 = (a2 != 0) ? rf[a2] : 0;
    
-endmodule // regfile
+endmodule // regfile      */
