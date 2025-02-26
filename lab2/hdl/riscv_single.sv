@@ -138,6 +138,7 @@ module maindec (input  logic [6:0] op,
        7'b1100011: controls = 11'b0_10_0_0_00_1_01_0; // beq
        7'b0010011: controls = 11'b1_00_1_0_00_0_10_0; // I–type ALU
        7'b1101111: controls = 11'b1_11_0_0_10_0_00_1; // jal
+       7'b0110111: controls = 11'b0_11_1_0_xx_0_01_0; // lui (just implemented)	 **************************
        default: controls = 11'bx_xx_x_x_xx_x_xx_x; // ???
      endcase // case (op)
    
@@ -147,26 +148,30 @@ module aludec (input  logic       opb5,
 	       input  logic [2:0] funct3,
 	       input  logic 	  funct7b5,
 	       input  logic [1:0] ALUOp,
-	       output logic [2:0] ALUControl);
+	       output logic [3:0] ALUControl); // ALUcontrol expanded
    
    logic 			  RtypeSub;
    
    assign RtypeSub = funct7b5 & opb5; // TRUE for R–type subtract
    always_comb
      case(ALUOp)
-       2'b00: ALUControl = 3'b000; // addition
-       2'b01: ALUControl = 3'b001; // subtraction
+       2'b00: ALUControl = 4'b0000; // addition
+       2'b01: ALUControl = 4'b0001; // subtraction
        default: case(funct3) // R–type or I–type ALU
-		  3'b000: if (RtypeSub)
-		    ALUControl = 3'b001; // sub
+		  4'b0000: if (RtypeSub)
+		    ALUControl = 4'b0001; // sub
 		  else
-		    ALUControl = 3'b000; // add, addi
-		  3'b010: ALUControl = 3'b101; // slt, slti
-		  3'b110: ALUControl = 3'b011; // or, ori
-		  3'b111: ALUControl = 3'b010; // and, andi
-		  3'b100: ALUControl = 3'b100; // xor, xori	
-      3'b001: ALUControl = 3'b111; // sll (just implemented)	 ************************** 
-		  default: ALUControl = 3'bxxx; // ???
+		    ALUControl = 4'b0000; // add, addi
+    //func3
+		  4'b0010: ALUControl = 4'b0101; // slt, slti
+      4'b0011: ALUControl = 4'b0110; // sltu (just implemented)	 **************************
+		  4'b0110: ALUControl = 4'b0011; // or, ori
+		  4'b0111: ALUControl = 4'b0010; // and, andi
+		  4'b0100: ALUControl = 4'b0100; // xor, xori	
+      4'b0001: ALUControl = 4'b0111; // sll (just implemented)	 ************************** 
+      4'b0101: ALUControl = 4'b1000; // srl (just implemented)	 **************************
+      4'b0101: ALUControl = 4'b1001; // sra (just implemented)	 **************************
+		  default: ALUControl = 4'bxxxx; // ???
 		endcase // case (funct3)       
      endcase // case (ALUOp)
    
@@ -322,13 +327,16 @@ module alu (input  logic [31:0] a, b,
 
    always_comb
      case (alucontrol)
-       3'b000:  result = sum;         // add
-       3'b001:  result = sum;         // subtract
-       3'b010:  result = a & b;       // and
-       3'b011:  result = a | b;       // or
-       3'b101:  result = sum[31] ^ v; // slt       
-       3'b100:  result = a ^ b;       // xor
-       3'b111:  result = a << b[4:0];      //sll ********************** do i want to use all the bits in  b?s
+       4'b0000:  result = sum;         // add
+       4'b0001:  result = sum;         // subtract
+       4'b0010:  result = a & b;       // and
+       4'b0011:  result = a | b;       // or
+       4'b0101:  result = sum[31] ^ v; // slt  
+       4'b0011:  result = a < b;       //sltu     
+       4'b0100:  result = a ^ b;       // xor
+       4'b0111:  result = a << b[4:0]; //sll 
+       4'b0101:  result = a >> b[4:0]; //srl
+       4'b0101:  result = a >>> b[4:0]; //sra
 
        default: result = 32'bx;
      endcase
@@ -338,7 +346,7 @@ module alu (input  logic [31:0] a, b,
    
 endmodule // alu
 
-   /* My refile from lab0 */
+   /* My regfile from lab0 */
 
 module regfile (input logic         clk, 
 		input logic 	    we3, // RegWrite
@@ -349,10 +357,10 @@ module regfile (input logic         clk,
    logic [31:0] 		    rf[31:0];
    
    always_ff @(posedge clk) // This block runs on the rising edge of clk, meaning it updates the registers synchronously.
-      if (we3 && wa3!=0) rf[wa3] <= wd3; // If write enable we3 is high, the register at address wa3 is updated with wd3. If we3 is low, no write occurs.
+      if (we3 && rd!=0) rf[rd] <= wd3; // If write enable we3 is high, the register at address wa3 is updated with wd3. If we3 is low, no write occurs.
 
-   assign rd1 = (ra1 == 5'b00000) ? 32'b0 : rf[ra1]; // If ra1 == 0, return 32'b0 (Register 0 always reads as zero). Otherwise, return the value stored in rf[ra1].
-   assign rd2 = (ra2 == 5'b00000) ? 32'b0 : rf[ra2]; // If ra2 == 0, return 32'b0 (Register 0 always reads as zero). Otherwise, return the value stored in rf[ra2].
+   assign rd1 = (rs1 == 5'b00000) ? 32'b0 : rf[rs1]; // If ra1 == 0, return 32'b0 (Register 0 always reads as zero). Otherwise, return the value stored in rf[ra1].
+   assign rd2 = (rs2 == 5'b00000) ? 32'b0 : rf[rs2]; // If ra2 == 0, return 32'b0 (Register 0 always reads as zero). Otherwise, return the value stored in rf[ra2].
    
    
 endmodule // regfile
