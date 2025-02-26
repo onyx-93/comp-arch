@@ -40,7 +40,7 @@ module testbench();
    initial
      begin
 	string memfilename;
-        memfilename = {"../testing/sll.memfile"};
+        memfilename = {"../riscvtest/xor-test.memfile"};
         $readmemh(memfilename, dut.imem.RAM);
      end
 
@@ -138,7 +138,7 @@ module maindec (input  logic [6:0] op,
        7'b1100011: controls = 11'b0_10_0_0_00_1_01_0; // beq
        7'b0010011: controls = 11'b1_00_1_0_00_0_10_0; // I–type ALU
        7'b1101111: controls = 11'b1_11_0_0_10_0_00_1; // jal
-       7'b0110111: controls = 11'b0_11_1_0_xx_0_01_0; // lui (just implemented)	 **************************
+      //  7'b0110111: controls = 11'b0_11_1_0_xx_0_01_0; // lui (just implemented)	 **************************
        default: controls = 11'bx_xx_x_x_xx_x_xx_x; // ???
      endcase // case (op)
    
@@ -148,7 +148,7 @@ module aludec (input  logic       opb5,
 	       input  logic [2:0] funct3,
 	       input  logic 	  funct7b5,
 	       input  logic [1:0] ALUOp,
-	       output logic [3:0] ALUControl); // ALUcontrol expanded
+	       output logic [2:0] ALUControl); 
    
    logic 			  RtypeSub;
    
@@ -169,8 +169,8 @@ module aludec (input  logic       opb5,
 		  4'b0111: ALUControl = 4'b0010; // and, andi
 		  4'b0100: ALUControl = 4'b0100; // xor, xori	
       4'b0001: ALUControl = 4'b0111; // sll (just implemented)	 ************************** 
-      4'b0101: ALUControl = 4'b1000; // srl (just implemented)	 **************************
-      4'b0101: ALUControl = 4'b1001; // sra (just implemented)	 **************************
+      // 4'b0101: ALUControl = 4'b1000; // srl (just implemented)	 **************************
+      // 4'b0101: ALUControl = 4'b1001; // sra (just implemented)	 **************************
 		  default: ALUControl = 4'bxxxx; // ???
 		endcase // case (funct3)       
      endcase // case (ALUOp)
