@@ -12,8 +12,13 @@ __start:
     addi t0, zero, -1    # t0 = 0xFFFFFFFF (-1 in signed representation)
     addi t1, zero, 3     # t1 = 3 (small nonzero value)
     add t0, t0, t1       # t0 = 0xFFFFFFFF + 3 = 0x00000002 
-    sll t1, t0, t1       # t1 = t0 - 3 (introduces variation)
-    #xor t1, t1, t0       # Further scramble t1 with XOR
+    sll a1, t0, t1       # a1 = t0 << 3 = 0x0000_0010
+    xor t1, a1, t0       # t1 = a1 ^ t0 = 0x0000_0010 ^ 0x0000_0002 = 0x0000_0012
+    addi t2, t1, 10      # t2 = t1 + 10 = 0x0000_0012 + 0x0000_000A = 0x0000_001C
+    srl a5, t2, a1       # a5 = t2 >> a1 = 0x0000_001C >> 0x0000_0010 = 0x0000_0000
+    addi a0, t0, 0xDEADBEEF   # a0 = t0 + 0xDEAD_BEEF = 0x0000_0002 + 0xDEAD_BEEF = 0xDEAD_BEF1
+    sra t3, a0, t2       # t3 = 0xDEAD_BEF1 >>> 0x0000_001C = 0x0000_000D
+
 
     # Perform XOR test
    # xor t2, t0, t1       # t2 = t0 \oplus t1
