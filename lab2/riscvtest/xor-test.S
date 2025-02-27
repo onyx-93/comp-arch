@@ -10,7 +10,7 @@ __start:
 
     # Generate pseudo-random values using arithmetic operations
     # ---------------------------
-    # Existing pseudo-random value generation code
+    # Generate pseudo-random values using arithmetic operations
     addi t0, zero, -1    # t0 = 0xFFFFFFFF (-1 in signed representation)
     addi t1, zero, 3     # t1 = 3 (small nonzero value)
     add t0, t0, t1       # t0 = 0xFFFFFFFF + 3 = 0x00000002 
@@ -23,21 +23,23 @@ __start:
 
     # ---------------------------
     # Test for sltu (set less than unsigned)
+
     # Test 1: Compare 0xFFFFFFFE and 0x00000002
-    #   - t4 = 0xFFFFFFFE (unsigned: 4294967294)
-    #   - t5 = 0x00000002 (unsigned: 2)
+    #   t4 = 0xFFFFFFFE (unsigned: 4294967294)
+    #   t5 = 2 (unsigned: 2)
     # Since 4294967294 is not less than 2, sltu should produce 0.
     addi t4, zero, -2    # t4 = 0xFFFFFFFE (-2 in signed, interpreted as 4294967294 unsigned)
     addi t5, zero, 2     # t5 = 2
     sltu a2, t4, t5      # a2 = (t4 < t5)? 1: 0, expected a2 = 0
 
     # Test 2: Compare 0x00000002 and 0xFFFFFFFE
-    #   - t6 = 0x00000002 (unsigned: 2)
-    #   - t7 = 0xFFFFFFFE (unsigned: 4294967294)
+    #   t6 = 2 (unsigned: 2)
+    #   s0 = 0xFFFFFFFE (unsigned: 4294967294) -- using s0 instead of t7
     # Since 2 is less than 4294967294, sltu should produce 1.
     addi t6, zero, 2     # t6 = 2
-    addi t7, zero, -2    # t7 = 0xFFFFFFFE
-    sltu a3, t6, t7      # a3 = (t6 < t7)? 1: 0, expected a3 = 1
+    addi s0, zero, -2    # s0 = 0xFFFFFFFE
+    sltu a3, t6, s0      # a3 = (t6 < s0)? 1: 0, expected a3 = 1
+
 
 
 
