@@ -16,8 +16,8 @@ __start:
     xor t1, a1, t0       # t1 = a1 ^ t0 = 0x0000_0010 ^ 0x0000_0002 = 0x0000_0012
     addi t2, t1, 10      # t2 = t1 + 10 = 0x0000_0012 + 0x0000_000A = 0x0000_001C
     srl a5, t2, a1       # a5 = t2 >> a1 = 0x0000_001C >> 0x0000_0010 = 0x0000_0000
-    addi a0, t0, 0xDEADBEEF   # a0 = t0 + 0xDEAD_BEEF = 0x0000_0002 + 0xDEAD_BEEF = 0xDEAD_BEF1
-    sra t3, a0, t2       # t3 = 0xDEAD_BEF1 >>> 0x0000_001C = 0x0000_000D
+    addi a0, t0, 0x7F8   # a0 = t0 + 0x7F8 = 0x0000_0002 + 0x7F8  = 0x7FA
+    sra t3, a0, t0       # t3 = 0x7FA >>> 0x0000_0002 = 0x0000_01FE
 
 
     # Perform XOR test
