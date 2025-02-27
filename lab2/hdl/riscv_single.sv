@@ -169,8 +169,8 @@ module aludec (input  logic       opb5,
 		  4'b0111: ALUControl = 4'b0010; // and, andi
 		  4'b0100: ALUControl = 4'b0100; // xor, xori	
       4'b0001: ALUControl = 4'b0111; // sll (just implemented)	 ************************** 
-      // 4'b0101: ALUControl = 4'b1000; // srl (just implemented)	 **************************
-      // 4'b0101: ALUControl = 4'b1001; // sra (just implemented)	 **************************
+      4'b0101: ALUControl = 4'b1000; // srl (just implemented)	 **************************
+      4'b0101: ALUControl = 4'b1001; // sra (just implemented)	 **************************
 		  default: ALUControl = 4'bxxxx; // ???
 		endcase // case (funct3)       
      endcase // case (ALUOp)
