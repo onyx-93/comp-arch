@@ -25,6 +25,16 @@
 //   sw           0100011   010       immediate
 //   jal          1101111   immediate immediate
 
+/*Implemented Instructions by Daniel Dubon that actually work
+  sll
+  sra
+  srl
+
+*/
+
+
+// ALUControl was expanded to 4 bits to allow more ALU operations
+
 module testbench();
 
    logic        clk;
@@ -81,7 +91,7 @@ module riscvsingle (input  logic        clk, reset,
    
    logic 				ALUSrc, RegWrite, Jump, Zero;
    logic [1:0] 				ResultSrc, ImmSrc;
-   logic [2:0] 				ALUControl;
+   logic [3:0] 				ALUControl;
    
    controller c (Instr[6:0], Instr[14:12], Instr[30], Zero,
 		 ResultSrc, MemWrite, PCSrc,
@@ -104,7 +114,7 @@ module controller (input  logic [6:0] op,
 		   output logic       PCSrc, ALUSrc,
 		   output logic       RegWrite, Jump,
 		   output logic [1:0] ImmSrc,
-		   output logic [2:0] ALUControl);
+		   output logic [3:0] ALUControl);
    
    logic [1:0] 			      ALUOp;
    logic 			      Branch;
@@ -148,7 +158,7 @@ module aludec (input  logic       opb5,
 	       input  logic [2:0] funct3,
 	       input  logic 	  funct7b5,
 	       input  logic [1:0] ALUOp,
-	       output logic [2:0] ALUControl); 
+	       output logic [3:0] ALUControl); 
    
    logic 			  RtypeSub;
    
@@ -164,13 +174,13 @@ module aludec (input  logic       opb5,
 		    ALUControl = 4'b0000; // add, addi
     //func3
 		  4'b0010: ALUControl = 4'b0101; // slt, slti
-      4'b0011: ALUControl = 4'b0110; // sltu (just implemented)	 **************************
 		  4'b0110: ALUControl = 4'b0011; // or, ori
 		  4'b0111: ALUControl = 4'b0010; // and, andi
 		  4'b0100: ALUControl = 4'b0100; // xor, xori	
       4'b0001: ALUControl = 4'b0111; // sll (just implemented)	 it worked! 
-      4'b0101: ALUControl = 4'b1000; // srl (just implemented)	 **************************
-      4'b0101: ALUControl = 4'b1001; // sra (just implemented)	 **************************
+      4'b0101: ALUControl = 4'b1000; // srl (just implemented)	 it worked!
+      4'b0101: ALUControl = 4'b1001; // sra (just implemented)	 it worked!
+      4'b0011: ALUControl = 4'b0110; // sltu (just implemented)	 **************************
 		  default: ALUControl = 4'bxxxx; // ???
 		endcase // case (funct3)       
      endcase // case (ALUOp)
@@ -182,7 +192,7 @@ module datapath (input  logic        clk, reset,
 		 input  logic 	     PCSrc, ALUSrc,
 		 input  logic 	     RegWrite,
 		 input  logic [1:0]  ImmSrc,
-		 input  logic [2:0]  ALUControl,
+		 input  logic [3:0]  ALUControl,
 		 output logic 	     Zero,
 		 output logic [31:0] PC,
 		 input  logic [31:0] Instr,
@@ -312,7 +322,7 @@ module dmem (input  logic        clk, we,
 endmodule // dmem
 
 module alu (input  logic [31:0] a, b,
-            input  logic [2:0] 	alucontrol,
+            input  logic [3:0] 	alucontrol,
             output logic [31:0] result,
             output logic 	zero);
 
@@ -336,8 +346,8 @@ module alu (input  logic [31:0] a, b,
        4'b0011:  result = a < b;       //sltu     
        4'b0100:  result = a ^ b;       // xor
        4'b0111:  result = a << b[4:0]; //sll worked!
-       4'b1000:  result = a >> b[4:0]; //srl
-       4'b1001:  result = a >>> b[4:0]; //sra
+       4'b1000:  result = a >> b[4:0]; //srl worked!
+       4'b1001:  result = a >>> b[4:0]; //sra worked!
 
        default: result = 32'bx;
      endcase
