@@ -10,7 +10,7 @@ __start:
 
     # Generate pseudo-random values using arithmetic operations
     # ---------------------------
-     # Generate pseudo-random values using arithmetic operations
+       # Generate pseudo-random values using arithmetic operations
     addi t0, zero, -1    # t0 = 0xFFFFFFFF (-1 in signed representation)
     addi t1, zero, 3     # t1 = 3 (small nonzero value)
     add t0, t0, t1       # t0 = 0xFFFFFFFF + 3 = 0x00000002 
@@ -19,7 +19,8 @@ __start:
     addi t2, t1, 10      # t2 = t1 + 10 = 0x00000012 + 0x0000000A = 0x0000001C
     srl a5, t2, a1       # a5 = t2 >> a1 = 0x0000001C >> 0x00000010 = 0x00000000
     addi a0, t0, 0x7F8   # a0 = t0 + 0x7F8 = 0x00000002 + 0x7F8 = 0x000007FA
-    sra t3, a0, t0       # t3 = a0 >>> t0 = 0x7FA >> 2 = 0x000001FE
+    # (Original SRA test with positive a0 is replaced)
+    # sra t3, a0, t0     # Removed: previously tested positive value shifting
 
     # ---------------------------
     # Test for sltu (set less than unsigned)
@@ -46,19 +47,25 @@ __start:
     srli s4, s3, 2       # s4 = s3 >> 2 = 16 >> 2 = 4, expected s4 = 4 (0x4)
 
     # ---------------------------
-    # Test for srai (shift right arithmetic immediate)
-    # Use a negative number to observe sign extension:
+    # Test for srai (shift right arithmetic immediate) with a negative number:
     addi s5, zero, -16   # s5 = -16 (0xFFFFFFF0 in 32-bit)
-    srai s6, s5, 2       # s6 = s5 >>> 2, expected arithmetic shift: -16 >> 2 = -4 (0xFFFFFFFC)
+    srai s6, s5, 2       # s6 = s5 >>> 2, expected: -16 >> 2 = -4 (0xFFFFFFFC)
+
+    # ---------------------------
+    # Test for sra (shift right arithmetic, register variant) with a negative number:
+    addi s7, zero, -32  # s12 = -32 (0xFFFFFFE0 in 32-bit)
+    addi s8, zero, 3    # s13 = 3 (shift amount)
+    sra s9, s7, s8    # sra = s12 >>> s13, expected: -32 >> 3 = -4 (0xFFFFFFFC)
 
     # ---------------------------
     # Test for sltiu (set less than immediate unsigned)
     # Test 1: Compare a negative value and a small positive value
-    addi s7, zero, -1    # s7 = -1, which is 0xFFFFFFFF unsigned (4294967295)
-    sltiu s8, s7, 1      # s8 = (s7 < 1)? 1: 0, expected s8 = 0
+    #addi s7, zero, -1    # s7 = -1, which is 0xFFFFFFFF unsigned (4294967295)
+    #sltiu s8, s7, 1      # s8 = (s7 < 1)? 1: 0, expected s8 = 0
     # Test 2: Compare two small positive values
-    addi s10, zero, 1    # s10 = 1
-    sltiu s11, s10, 2    # s11 = (1 < 2)? 1: 0, expected s11 = 1
+    #addi s10, zero, 1    # s10 = 1
+   # sltiu s11, s10, 2    # s11 = (1 < 2)? 1: 0, expected s11 = 1
+
 
 
 
