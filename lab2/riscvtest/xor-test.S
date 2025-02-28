@@ -9,23 +9,74 @@
 __start:
 
     # Generate pseudo-random values using arithmetic operations
+    # Test shifts (sll, srl, sra)
+    addi a0, zero, -32    # s0 = -32 (0xFFFFFFE0)
+    addi a1, zero, 3
+    sll a2, s0, s1        # s2 = -256 (0xFFFFFE00)
+    srl a3, s0, s1        # s3 = 536870900 (0x1FFFFFFC)
+    sra a4, s0, s1        # s4 = -4 (0xFFFFFFFC)
+
+    # Test immediate shifts (slli, srli, srai)
+    slli a5, s0, 2        # s5 = -128 (0xFFFFFF80)
+    srli a6, s0, 2        # s6 = 1073741816 (0x3FFFFFF8)
+    srai a7, s0, 2        # s7 = -8 (0xFFFFFFF8)
+
+    # Test comparisons (sltu, sltiu)
+    addi t1, zero, -1     # s8 = 0xFFFFFFFF (unsigned max)
+    addi t2, zero, 1      # s9 = 1
+    sltu t3, s8, s9      # s10 = 0 (4294967295 > 1)
+    sltu t4, s9, s8      # s11 = 1 (1 < 4294967295)
+    sltiu t5, s8, 1      # s12 = 0 (4294967295 < 1? False)
+    sltiu t6, s9, 2      # s13 = 1 (1 < 2? True)
+
+    # Exit
+    addi a0, zero, 0
+    ret
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     # ---------------------------
      # Generate pseudo-random values using arithmetic operations
 
     # Test SRA (register variant) with a negative number.
     # s0 = -32 (0xFFFFFFE0), s1 = 3, so sra s2, s0, s1 should yield -4 (0xFFFFFFFC)
-    addi s0, zero, -32      
-    addi s1, zero, 3        
-    sra s2, s0, s1          
+    #addi s0, zero, -32      
+    #addi s1, zero, 3        
+    #sra s2, s0, s1      #s2 = -4 (0xFFFFFFFC).     
 
     # Test SRAI (immediate variant) with a negative number.
     # s3 = -16 (0xFFFFFFF0), shifting right by 2 should yield -4 (0xFFFFFFFC)
-    addi s3, zero, -16      
-    srai s4, s3, 2          
+    #addi s3, zero, -16      
+    #srai s4, s3, 2     #s4 = -4 (0xFFFFFFFC).          
 
     # End of test; return from main.
-    addi a0, zero, 0        
-    ret
+    #addi a0, zero, 0        
+    #ret
 
 
 
