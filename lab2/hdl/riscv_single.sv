@@ -172,15 +172,15 @@ module aludec (input  logic       opb5,
 		    ALUControl = 4'b0001; // sub
 		  else
 		    ALUControl = 4'b0000; // add, addi
-    //func3
 		  4'b0010: ALUControl = 4'b0101; // slt, slti
+      4'b0011: ALUControl = 4'b0110; // sltu (just implemented)	 it worked
 		  4'b0110: ALUControl = 4'b0011; // or, ori
 		  4'b0111: ALUControl = 4'b0010; // and, andi
 		  4'b0100: ALUControl = 4'b0100; // xor, xori	
       4'b0001: ALUControl = 4'b0111; // sll (just implemented)	 it worked! 
-      4'b0101: ALUControl = 4'b1000; // srl (just implemented)	 it worked!
-      4'b0101: ALUControl = 4'b1001; // sra (just implemented)	 it worked!
-      4'b0011: ALUControl = 4'b0110; // sltu (just implemented)	 **************************
+      4'b0101: ALUControl = funct7b5 ? 4'b1001 : 4'b1000; // sra if funct7b5=1, else srl
+      // 4'b0101: ALUControl = 4'b1000; // srl (just implemented)	 it worked!
+      // 4'b0101: ALUControl = 4'b1001; // sra
 		  default: ALUControl = 4'bxxxx; // ???
 		endcase // case (funct3)       
      endcase // case (ALUOp)
@@ -347,7 +347,7 @@ module alu (input  logic [31:0] a, b,
        4'b0100:  result = a ^ b;       // xor
        4'b0111:  result = a << b[4:0]; //sll worked!
        4'b1000:  result = a >> b[4:0]; //srl worked!
-       4'b1001:  result = a >>> b[4:0]; //sra worked!
+       4'b1001:  result = $signed(a) >>> b[4:0]; //sra it is treating a as unsigned and the sign bit is not being propagated correctly during the shift operation.
 
        default: result = 32'bx;
      endcase
