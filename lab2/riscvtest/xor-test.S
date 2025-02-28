@@ -22,16 +22,23 @@ __start:
     srli a6, a0, 2        # a6 = 8 (0x0000_0008)
     srai a7, s0, 2        # a7 = -64 (0xFFFF_FFC0)
 
+    lui t1, 0x89ABD
+    addi t1, t1, -0x211   # t1 = 0x89AB_CDEF
+    
+    
+    
+    
+    
     # Test comparisons (sltu, sltiu)
-    addi t1, zero, -1     # t1 = 0xFFFFFFFF (unsigned max)
-    addi t2, zero, 1      # t2 = 1
-    sltu t3, t1, t2      # t3 = 0 (4294967295 > 1)
-    sltu t4, t2, t1      # t4 = 1 (1 < 4294967295)
-    sltiu t5, t1, 1      # t5 = 0 (4294967295 < 1? False)
-    sltiu t6, t2, 2      # t6 = 1 (1 < 2? True)
+    #addi t1, zero, -1     # t1 = 0xFFFFFFFF (unsigned max)
+    #addi t2, zero, 1      # t2 = 1
+    #sltu t3, t1, t2      # t3 = 0 (4294967295 > 1)
+    #sltu t4, t2, t1      # t4 = 1 (1 < 4294967295)
+    #sltiu t5, t1, 1      # t5 = 0 (4294967295 < 1? False)
+    #sltiu t6, t2, 2      # t6 = 1 (1 < 2? True)
 
     # Exit
-    addi t0, zero, 0
+    #addi t0, zero, 0
     ret
     
     
