@@ -179,6 +179,7 @@ module aludec (input  logic       opb5,
 		  4'b0100: ALUControl = 4'b0100; // xor, xori	
       4'b0001: ALUControl = 4'b0111; // sll (just implemented)	 it worked! 
       4'b0101: ALUControl = funct7b5 ? 4'b1001 : 4'b1000; // sra if funct7b5=1, else srl
+      
       // 4'b0101: ALUControl = 4'b1000; // srl (just implemented)	 it worked!
       // 4'b0101: ALUControl = 4'b1001; // sra
 		  default: ALUControl = 4'bxxxx; // ???
@@ -334,8 +335,6 @@ module alu (input  logic [31:0] a, b,
    assign sum = a + condinvb + alucontrol[0];
    assign isAddSub = ~alucontrol[2] & ~alucontrol[1] |
                      ~alucontrol[1] & alucontrol[0];   
-
-
    always_comb
      case (alucontrol)
        4'b0000:  result = sum;         // add
@@ -343,7 +342,7 @@ module alu (input  logic [31:0] a, b,
        4'b0010:  result = a & b;       // and
        4'b0011:  result = a | b;       // or
        4'b0101:  result = sum[31] ^ v; // slt  
-       4'b0011:  result = a < b;       //sltu     
+       4'b0110:  result = a < b;       //sltu     
        4'b0100:  result = a ^ b;       // xor
        4'b0111:  result = a << b[4:0]; //sll worked!
        4'b1000:  result = a >> b[4:0]; //srl worked!

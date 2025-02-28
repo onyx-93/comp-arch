@@ -16,7 +16,7 @@
 # ** Warning: (vlib-34) Library already exists at "work".
 # Errors: 0, Warnings: 1
 # Model Technology ModelSim SE-64 vlog 2021.3 Compiler 2021.07 Jul 13 2021
-# Start time: 10:35:01 on Feb 27,2025
+# Start time: 01:23:40 on Feb 28,2025
 # vlog -reportprogress 300 riscv_single.sv 
 # -- Compiling module testbench
 # -- Compiling module riscvsingle
@@ -39,13 +39,13 @@
 # Top level modules:
 # 	testbench
 # 	flopenr
-# End time: 10:35:01 on Feb 27,2025, Elapsed time: 0:00:00
+# End time: 01:23:40 on Feb 28,2025, Elapsed time: 0:00:00
 # Errors: 0, Warnings: 0
 # vsim -debugdb -voptargs="+acc" work.testbench 
-# Start time: 10:35:01 on Feb 27,2025
+# Start time: 01:23:40 on Feb 28,2025
 # ** Note: (vsim-3812) Design is being optimized...
 # ** Note: (vsim-8611) Generating debug db.
-# ** Note: (vopt-4301) Memory core inferred for signal 'RAM' width=32, depth=256, type=RAM at location riscv_single.sv:316
+# ** Note: (vopt-4301) Memory core inferred for signal 'RAM' width=32, depth=256, type=RAM at location riscv_single.sv:317
 # Loading sv_std.std
 # Loading work.testbench(fast)
 # Loading work.top(fast)
@@ -67,9 +67,9 @@
 # ** Error: (vsim-8357) Internal debugDB error id:ct1  ret:1 table context_tbl already exists
 # ** Warning: (vsim-WLF-5000) WLF file currently in use: vsim.wlf
 #           File in use by: Erica  Hostname: DESKTOP-1L8B4D6  ProcessID: 8508
-#           Attempting to use alternate WLF file "./wlftgq4j3n".
+#           Attempting to use alternate WLF file "./wlftfgb7m4".
 # ** Warning: (vsim-WLF-5001) Could not open WLF file: vsim.wlf
-#           Using alternate file: ./wlftgq4j3n
+#           Using alternate file: ./wlftfgb7m4
 # Debug data file does not match loaded design.
 # Debug data file does not match loaded design.
 # ** Error: Could not open the database because of the following problem accessing the required debug information:
@@ -79,5 +79,5 @@
 # Debug data file does not match loaded design.
 #     while executing
 # "add schematic -full sim:/testbench/dut/rv32single"
-# End time: 10:36:23 on Feb 27,2025, Elapsed time: 0:01:22
+# End time: 01:26:06 on Feb 28,2025, Elapsed time: 0:02:26
 # Errors: 2, Warnings: 2
