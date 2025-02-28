@@ -10,16 +10,17 @@ __start:
 
     # Generate pseudo-random values using arithmetic operations
     # Test shifts (sll, srl, sra)
-    addi a0, zero, -32    # s0 = -32 (0xFFFFFFE0)
+    addi a0, zero, 32    
     addi a1, zero, 3
-    sll a2, a0, a1        # a2 = -256 (0xFFFFFE00)
-    srl a3, a0, a1        # s3 = 536870900 (0x1FFFFFFC)
-    sra a4, a0, a1        # s4 = -4 (0xFFFFFFFC)
+    sll a2, a0, a1        # a2 = 256 (0x0000_0100)
+    srl a3, a0, a1        # s3 = 4 (0x0000_00004)
+    addi s0, zero, -256   # s0 = 0xFFFF_FF00
+    sra a4, s0, a1        # s4 = -32 (0xFFFF_FFE0)
 
     # Test immediate shifts (slli, srli, srai)
-    slli a5, a0, 2        # a5 = -128 (0xFFFFFF80)
+    slli a5, a0, 2        # a5 = 128 (0x0000_00080)
     srli a6, a0, 2        # a6 = 1073741816 (0x3FFFFFF8)
-    srai a7, a0, 2        # a7 = -8 (0xFFFFFFF8)
+    srai a7, s0, 2        # a7 = -64 (0xFFFF_FFC0)
 
     # Test comparisons (sltu, sltiu)
     addi t1, zero, -1     # t1 = 0xFFFFFFFF (unsigned max)
