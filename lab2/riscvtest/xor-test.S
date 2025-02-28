@@ -19,7 +19,7 @@ __start:
 
     # Test immediate shifts (slli, srli, srai)
     slli a5, a0, 2        # a5 = 128 (0x0000_00080)
-    srli a6, a0, 2        # a6 = 1073741816 (0x3FFFFFF8)
+    srli a6, a0, 2        # a6 = 8 (0x0000_0008)
     srai a7, s0, 2        # a7 = -64 (0xFFFF_FFC0)
 
     # Test comparisons (sltu, sltiu)
