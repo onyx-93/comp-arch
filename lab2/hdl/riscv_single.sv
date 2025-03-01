@@ -121,7 +121,7 @@ module controller (input  logic [6:0] op,
    logic 			      Branch;
    
    maindec md (op, ResultSrc, MemWrite, Branch,
-	       ALUSrc, RegWrite, Jump, ImmSrc, ALUOp);
+	       ALUSrc, RegWrite, Jump, ImmSrc, ALUOp, muxPC);
    aludec ad (op[5], funct3, funct7b5, ALUOp, ALUControl);
    assign PCSrc = Branch & (Zero ^ funct3[0]) | Jump;
    
@@ -133,24 +133,26 @@ module maindec (input  logic [6:0] op,
 		output logic 	   Branch, ALUSrc,
 		output logic 	   RegWrite, Jump,
 		output logic [2:0] ImmSrc,
-		output logic [1:0] ALUOp);
+		output logic [1:0] ALUOp,
+    output logic muxPC); // signal to indicate mux to choose PC value
    
-   logic [11:0] 		   controls;
+   logic [12:0] 		   controls;
    
    assign {RegWrite, ImmSrc, ALUSrc, MemWrite,
-	   ResultSrc, Branch, ALUOp, Jump} = controls;
+	   ResultSrc, Branch, ALUOp, Jump, muxPC} = controls;
    
    always_comb
      case(op)
-       // RegWrite_ImmSrc_ALUSrc_MemWrite_ResultSrc_Branch_ALUOp_Jump
-       7'b0000011: controls = 12'b1_000_1_0_01_0_00_0; // lw
-       7'b0100011: controls = 12'b0_001_1_1_00_0_00_0; // sw
-       7'b0110011: controls = 12'b1_xxx_0_0_00_0_10_0; // R–type
-       7'b1100011: controls = 12'b0_010_0_0_00_1_01_0; // beq
-       7'b0010011: controls = 12'b1_000_1_0_00_0_10_0; // I–type ALU
-       7'b1101111: controls = 12'b1_011_0_0_10_0_00_1; // jal
-       7'b0110111: controls = 12'b0_100_1_0_00_0_11_0; // lui ALUOp 2'b11 for now
-       default: controls = 12'bx_xxx_x_x_xx_x_xx_x; // ???
+       // RegWrite_ImmSrc_ALUSrc_MemWrite_ResultSrc_Branch_ALUOp_Jump_muxPC
+       7'b0000011: controls = 13'b1_000_1_0_01_0_00_0_0; // lw
+       7'b0100011: controls = 13'b0_001_1_1_00_0_00_0_0; // sw
+       7'b0110011: controls = 13'b1_xxx_0_0_00_0_10_0_0; // R–type
+       7'b1100011: controls = 13'b0_010_0_0_00_1_01_0_0; // beq
+       7'b0010011: controls = 13'b1_000_1_0_00_0_10_0_0; // I–type ALU
+       7'b1101111: controls = 13'b1_011_0_0_10_0_00_1_0; // jal
+       7'b0110111: controls = 13'b1_100_1_0_00_0_11_0_0; // lui
+       7'b0010111: controls = 13'b1_100_1_0_00_0_11_0_1; // auipc
+       default: controls = 13'bx_xxx_x_x_xx_x_xx_x; // ???
      endcase // case (op)
    
 endmodule // maindec
@@ -168,7 +170,7 @@ module aludec (input  logic       opb5,
      case(ALUOp)
        2'b00: ALUControl = 4'b0000; // addition
        2'b01: ALUControl = 4'b0001; // subtraction
-       2'b11: ALUControl = 4'b1111  // the shifted imm + 0
+       2'b11: ALUControl = opb5 ? 4'b1111 : 4'b1011;  // lui if opb5 = 1, else auipc
        default: case(funct3) // R–type or I–type ALU
 		  4'b0000: if (RtypeSub)
 		    ALUControl = 4'b0001; // sub
@@ -181,9 +183,7 @@ module aludec (input  logic       opb5,
 		  4'b0100: ALUControl = 4'b0100; // xor, xori	
       4'b0001: ALUControl = 4'b0111; // sll (just implemented)	 it worked! 
       4'b0101: ALUControl = funct7b5 ? 4'b1001 : 4'b1000; // sra,srai if funct7b5=1, else srl,srli
-      
-      // 4'b0101: ALUControl = 4'b1000; // srl (just implemented)	 it worked!
-      // 4'b0101: ALUControl = 4'b1001; // sra
+
 		  default: ALUControl = 4'bxxxx; // ???
 		endcase // case (funct3)       
      endcase // case (ALUOp)
@@ -205,6 +205,7 @@ module datapath (input  logic        clk, reset,
    logic [31:0] 		     PCNext, PCPlus4, PCTarget;
    logic [31:0] 		     ImmExt;
    logic [31:0] 		     SrcA, SrcB;
+   logic [31:0] 		     SrcA_mux, SrcA_reg, Src_mx, srca_s;
    logic [31:0] 		     Result;
    
    // next PC logic
@@ -213,12 +214,42 @@ module datapath (input  logic        clk, reset,
    adder  pcaddbranch (PC, ImmExt, PCTarget);
    mux2 #(32)  pcmux (PCPlus4, PCTarget, PCSrc, PCNext);
    // register file logic
+
+
+/*module regfile (input logic         clk, 
+		input logic 	    we3, // RegWrite
+		input logic [4:0]   rs1, rs2, rd, // rs1 (register src1); rs2 (register src2); rd (destination register)
+		input logic [31:0]  wd3, // actual data written in register file
+		output logic [31:0] rd1, rd2); // rd1 reads rs1 = SrcA; rd2 reads rs2 =
+    
+    // Define a new wire to select between multiple sources
+wire [31:0] SrcA_muxed;
+
+
+mux2 #(32) srca_mux (SrcA_regfile, SrcA_mxpc, srca_select, SrcA_muxed);
+
+// Connect SrcA_muxed to the rest of the design
+mux2 #(32) mxpc (PC, Result, muxPC, SrcA_mxpc); 
+regfile rf (clk, RegWrite, Instr[19:15], Instr[24:20], Instr[11:7], Result, SrcA_regfile, WriteData);
+
+// Use SrcA_muxed for ALU input
+alu  alu (SrcA_muxed, SrcB, ALUControl, ALUResult, Zero);
+
+    
+     SrcB o*/
+
+     // attempt to connect mux between RD1 and Srca
+   // Multiplex between regfile output and mxpc output
+   mux2 #(32) srca_mux ( SrcA_mux, SrcA_reg, Src_mx, srca_s); // mew mux added to choose between RD1 and PC value
+   // Connect SrcA_muxed to the rest of the design
+   mux2 #(32) mxpc (PC, Result, muxPC, SrcA_mxpc);
+
    regfile  rf (clk, RegWrite, Instr[19:15], Instr[24:20],
-	       Instr[11:7], Result, SrcA, WriteData);
+	       Instr[11:7], Result, SrcA_reg, WriteData);
    extend  ext (Instr[31:7], ImmSrc, ImmExt);
    // ALU logic
    mux2 #(32)  srcbmux (WriteData, ImmExt, ALUSrc, SrcB);
-   alu  alu (SrcA, SrcB, ALUControl, ALUResult, Zero);
+   alu  alu (SrcA_mux, SrcB, ALUControl, ALUResult, Zero);
    mux3 #(32) resultmux (ALUResult, ReadData, PCPlus4,ResultSrc, Result);
 
 endmodule // datapath
@@ -241,11 +272,11 @@ module extend (input  logic [31:7] instr,
        // S−type (stores)
        3'b001:  immext = {{20{instr[31]}}, instr[31:25], instr[11:7]};
        // B−type (branches)
-       3'0b10:  immext = {{20{instr[31]}}, instr[7], instr[30:25], instr[11:8], 1'b0};       
+       3'b010:  immext = {{20{instr[31]}}, instr[7], instr[30:25], instr[11:8], 1'b0};       
        // J−type (jal)
        3'b011:  immext = {{12{instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b0};
        // U-type
-       3'b011   immext = {instr[31:12], 12'b0};
+       3'b100:  immext = {instr[31:12], 12'b0};
        default: immext = 32'bx; // undefined
      endcase // case (immsrc)
    
@@ -281,6 +312,7 @@ module mux2 #(parameter WIDTH = 8)
   assign y = s ? d1 : d0;
    
 endmodule // mux2
+
 
 module mux3 #(parameter WIDTH = 8)
    (input  logic [WIDTH-1:0] d0, d1, d2,
@@ -350,8 +382,9 @@ module alu (input  logic [31:0] a, b,
        4'b0100:  result = a ^ b;       // xor
        4'b0111:  result = a << b[4:0]; //sll worked!
        4'b1000:  result = a >> b[4:0]; //srl worked!
-       4'b1001:  result = $signed(a) >>> b[4:0]; //sra it is treating a as unsigned and the sign bit is not being propagated correctly during the shift operation.
-       4'b1111:  result = {b[31:12], b[12:0]};
+       4'b1001:  result = $signed(a) >>> b[4:0]; //sra worked!
+       4'b1111:  result = b;           // lui worked!
+       4'b1011:  result = a + b; // auipc
        default: result = 32'bx;
      endcase
 
