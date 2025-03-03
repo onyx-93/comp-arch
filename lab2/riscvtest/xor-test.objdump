@@ -7,7 +7,8 @@ Contents of section .riscv.attributes:
 Contents of section .text:
  80000000 13050002 93053000 3316b500 b356b500  ......0.3....V..
  80000010 130400f0 3357b440 93172500 13582500  ....3W.@..%..X%.
- 80000020 93582440 37d3ab89 1303f3de 67800000  .X$@7.......g...
+ 80000020 93582440 37d3ab89 1303f3de 97e3cdab  .X$@7...........
+ 80000030 93020000 67800000                    ....g...        
 
 Disassembly of section .riscv.attributes:
 
@@ -39,4 +40,6 @@ __start():
 80000020:	40245893          	srai	a7,s0,0x2
 80000024:	89abd337          	lui	t1,0x89abd
 80000028:	def30313          	addi	t1,t1,-529 # 89abcdef <_end+0x9abbdef>
-8000002c:	00008067          	ret
+8000002c:	abcde397          	auipc	t2,0xabcde
+80000030:	00000293          	li	t0,0
+80000034:	00008067          	ret

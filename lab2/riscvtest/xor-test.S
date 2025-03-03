@@ -22,8 +22,10 @@ __start:
     srli a6, a0, 2        # a6 = 8 (0x0000_0008)
     srai a7, s0, 2        # a7 = -64 (0xFFFF_FFC0)
 
-    lui t1, 0x89ABD
+    lui t1, 0x89ABD       # t1 = 0x89ABD000
     addi t1, t1, -0x211   # t1 = 0x89AB_CDEF
+
+    auipc t2, 0xABCDE     # T2 = 0xABCDE000 + actual PCvalue
     
     
     
@@ -38,7 +40,7 @@ __start:
     #sltiu t6, t2, 2      # t6 = 1 (1 < 2? True)
 
     # Exit
-    #addi t0, zero, 0
+    addi t0, zero, 0
     ret
     
     
