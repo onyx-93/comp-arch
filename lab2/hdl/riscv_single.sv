@@ -89,7 +89,7 @@ module riscvsingle (input  logic        clk, reset,
 		    output logic [31:0] ALUResult, WriteData,
 		    input  logic [31:0] ReadData);
    
-   logic 				ALUSrc, RegWrite, Jump, Zero;
+   logic 				ALUSrc, ALUsrcA RegWrite, Jump, Zero;  //ALUsrcA mux added between regfile and ALU
    logic [1:0] 				ResultSrc;
    logic [2:0]        ImmSrc; // just expanded to allow more immmediate bit distrubution
    logic [3:0] 				ALUControl;
@@ -97,12 +97,12 @@ module riscvsingle (input  logic        clk, reset,
    controller c (Instr[6:0], Instr[14:12], Instr[30], Zero,
 		 ResultSrc, MemWrite, PCSrc,
 		 ALUSrc, RegWrite, Jump,
-		 ImmSrc, ALUControl);
+		 ImmSrc, ALUControl, ALUsrcA);
    datapath dp (clk, reset, ResultSrc, PCSrc,
 		ALUSrc, RegWrite,
 		ImmSrc, ALUControl,
 		Zero, PC, Instr,
-		ALUResult, WriteData, ReadData);
+		ALUResult, WriteData, ReadData, ALUsrcA);
    
 endmodule // riscvsingle
 
@@ -112,16 +112,17 @@ module controller (input  logic [6:0] op,
 		   input  logic       Zero,
 		   output logic [1:0] ResultSrc,
 		   output logic       MemWrite,
-		   output logic       PCSrc, ALUSrc,
+		   output logic       PCSrc, ALUSrc, 
 		   output logic       RegWrite, Jump,
 		   output logic [2:0] ImmSrc,
-		   output logic [3:0] ALUControl);
+		   output logic [3:0] ALUControl
+       output logic ALUsrcA);
    
    logic [1:0] 			      ALUOp;
    logic 			      Branch;
    
    maindec md (op, ResultSrc, MemWrite, Branch,
-	       ALUSrc, RegWrite, Jump, ImmSrc, ALUOp, muxPC);
+	       ALUSrc, RegWrite, Jump, ImmSrc, ALUOp, ALUsrcA);
    aludec ad (op[5], funct3, funct7b5, ALUOp, ALUControl);
    assign PCSrc = Branch & (Zero ^ funct3[0]) | Jump;
    
@@ -134,16 +135,16 @@ module maindec (input  logic [6:0] op,
 		output logic 	   RegWrite, Jump,
 		output logic [2:0] ImmSrc,
 		output logic [1:0] ALUOp,
-    output logic muxPC); // signal to indicate mux to choose PC value
+    output logic ALUsrcA); //ALUSrcB signal to indicate mux to choose PC value
    
    logic [12:0] 		   controls;
    
    assign {RegWrite, ImmSrc, ALUSrc, MemWrite,
-	   ResultSrc, Branch, ALUOp, Jump, muxPC} = controls;
+	   ResultSrc, Branch, ALUOp, Jump, ALUsrcA} = controls;
    
    always_comb
      case(op)
-       // RegWrite_ImmSrc_ALUSrc_MemWrite_ResultSrc_Branch_ALUOp_Jump_muxPC
+       // RegWrite_ImmSrc_ALUSrc_MemWrite_ResultSrc_Branch_ALUOp_Jump_ALUSrcB
        7'b0000011: controls = 13'b1_000_1_0_01_0_00_0_0; // lw
        7'b0100011: controls = 13'b0_001_1_1_00_0_00_0_0; // sw
        7'b0110011: controls = 13'b1_xxx_0_0_00_0_10_0_0; // R–type
@@ -200,57 +201,46 @@ module datapath (input  logic        clk, reset,
 		 output logic [31:0] PC,
 		 input  logic [31:0] Instr,
 		 output logic [31:0] ALUResult, WriteData,
-		 input  logic [31:0] ReadData);
+		 input  logic [31:0] ReadData,
+     input logic ALUsrcA);
    
    logic [31:0] 		     PCNext, PCPlus4, PCTarget;
    logic [31:0] 		     ImmExt;
-   logic [31:0] 		     SrcA, SrcB;
-   logic [31:0] 		     SrcA_mux, SrcA_reg, Src_mx, srca_s;
+   logic [31:0] 		     SrcA, SrcB, RD1;
    logic [31:0] 		     Result;
    
-   // next PC logic
+ // next PC logic
    flopr #(32) pcreg (clk, reset, PCNext, PC);
    adder  pcadd4 (PC, 32'd4, PCPlus4);
    adder  pcaddbranch (PC, ImmExt, PCTarget);
    mux2 #(32)  pcmux (PCPlus4, PCTarget, PCSrc, PCNext);
    // register file logic
-
+   regfile  rf (clk, RegWrite, Instr[19:15], Instr[24:20],
+	       Instr[11:7], Result, RD1, WriteData); // revist RD1 ensure it is connected correctly
+   extend  ext (Instr[31:7], ImmSrc, ImmExt);
+   // ALU logic
 
 /*module regfile (input logic         clk, 
 		input logic 	    we3, // RegWrite
 		input logic [4:0]   rs1, rs2, rd, // rs1 (register src1); rs2 (register src2); rd (destination register)
 		input logic [31:0]  wd3, // actual data written in register file
-		output logic [31:0] rd1, rd2); // rd1 reads rs1 = SrcA; rd2 reads rs2 =
-    
-    // Define a new wire to select between multiple sources
-wire [31:0] SrcA_muxed;
+		output logic [31:0] rd1, rd2); // rd1 reads rs1 = SrcA; rd2 reads rs2 = SrcB only for R-type operations (when ALUSrc is low)
+   
+   logic [31:0] 		    rf[31:0];
+   
+   always_ff @(posedge clk) // This block runs on the rising edge of clk, meaning it updates the registers synchronously.
+      if (we3 && rd!=0) rf[rd] <= wd3; // If write enable we3 is high, the register at address wa3 is updated with wd3. If we3 is low, no write occurs.
+
+   assign rd1 = (rs1 == 5'b00000) ? 32'b0 : rf[rs1]; // If ra1 == 0, return 32'b0 (Register 0 always reads as zero). Otherwise, return the value stored in rf[ra1].
+   assign rd2 = (rs2 == 5'b00000) ? 32'b0 : rf[rs2]; // If ra2 == 0, return 32'b0 (Register 0 always reads as zero). Otherwise, return the value stored in rf[ra2].
+   */
 
 
-mux2 #(32) srca_mux (SrcA_regfile, SrcA_mxpc, srca_select, SrcA_muxed);
-
-// Connect SrcA_muxed to the rest of the design
-mux2 #(32) mxpc (PC, Result, muxPC, SrcA_mxpc); 
-regfile rf (clk, RegWrite, Instr[19:15], Instr[24:20], Instr[11:7], Result, SrcA_regfile, WriteData);
-
-// Use SrcA_muxed for ALU input
-alu  alu (SrcA_muxed, SrcB, ALUControl, ALUResult, Zero);
-
-    
-     SrcB o*/
-
-     // attempt to connect mux between RD1 and Srca
-   // Multiplex between regfile output and mxpc output
-   mux2 #(32) srca_mux ( SrcA_mux, SrcA_reg, Src_mx, srca_s); // mew mux added to choose between RD1 and PC value
-   // Connect SrcA_muxed to the rest of the design
-   mux2 #(32) mxpc (PC, Result, muxPC, SrcA_mxpc);
-
-   regfile  rf (clk, RegWrite, Instr[19:15], Instr[24:20],
-	       Instr[11:7], Result, SrcA_reg, WriteData);
-   extend  ext (Instr[31:7], ImmSrc, ImmExt);
-   // ALU logic
+   mux2 #(32)  srcamux (PC, RD1, ALUsrcA, SrcA):
    mux2 #(32)  srcbmux (WriteData, ImmExt, ALUSrc, SrcB);
-   alu  alu (SrcA_mux, SrcB, ALUControl, ALUResult, Zero);
+   alu  alu (SrcA, SrcB, ALUControl, ALUResult, Zero);
    mux3 #(32) resultmux (ALUResult, ReadData, PCPlus4,ResultSrc, Result);
+
 
 endmodule // datapath
 

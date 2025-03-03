@@ -1,3 +1,0 @@
-BEGIN 1:imem:fast:work
-    RAM :  1:testbench:fast:work
-END 
