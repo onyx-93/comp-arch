@@ -13,7 +13,7 @@
 # //
 # do riscv_single.do
 # Model Technology ModelSim SE-64 vlog 2021.3 Compiler 2021.07 Jul 13 2021
-# Start time: 23:41:43 on Mar 03,2025
+# Start time: 09:44:58 on Mar 04,2025
 # vlog -reportprogress 300 riscv_single.sv 
 # -- Compiling module testbench
 # -- Compiling module riscvsingle
@@ -36,13 +36,13 @@
 # Top level modules:
 # 	testbench
 # 	flopenr
-# End time: 23:41:43 on Mar 03,2025, Elapsed time: 0:00:00
+# End time: 09:44:58 on Mar 04,2025, Elapsed time: 0:00:00
 # Errors: 0, Warnings: 0
 # vsim -debugdb -voptargs="+acc" work.testbench 
-# Start time: 23:41:43 on Mar 03,2025
+# Start time: 09:44:58 on Mar 04,2025
 # ** Note: (vsim-3812) Design is being optimized...
 # ** Note: (vsim-8611) Generating debug db.
-# ** Note: (vopt-4301) Memory core inferred for signal 'RAM' width=32, depth=256, type=RAM at location riscv_single.sv:325
+# ** Note: (vopt-4301) Memory core inferred for signal 'RAM' width=32, depth=256, type=RAM at location riscv_single.sv:340
 # Loading sv_std.std
 # Loading work.testbench(fast)
 # Loading work.top(fast)
@@ -61,5 +61,6 @@
 # Loading work.imem(fast)
 # Loading work.dmem(fast)
 # ** Note: (vsim-8900) Creating design debug database vsim.dbg.
-# End time: 00:54:57 on Mar 04,2025, Elapsed time: 1:13:14
+find drivers -source -time {138 ns} -cause sim:/testbench/dut/rv32single/Instr
+# End time: 09:58:46 on Mar 04,2025, Elapsed time: 0:13:48
 # Errors: 0, Warnings: 0

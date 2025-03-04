@@ -118,12 +118,27 @@ module controller (input  logic [6:0] op,
 		   output logic [3:0] ALUControl);
    
    logic [2:0] 			      ALUOp;
-   logic 			      Branch;
+   logic 			      Branch, BranchControl;
    
    maindec md (op, ResultSrc, MemWrite, Branch,
 	       ALUSrc, ALUSrcA, RegWrite, Jump, ImmSrc, ALUOp);
    aludec ad (op[5], funct3, funct7b5, ALUOp, ALUControl);
-   assign PCSrc = Branch & (Zero ^ funct3[0]) | Jump;
+
+    assign BranchControl = Zero;
+   
+   always_comb
+     case(funct3)
+       // 
+       3'b000:  BranchControl == 1;   // beq
+      //  3'b001:  BranchControl = 1'b1;   // bne
+      //  3'b100:  BranchControl = 1'b1;   // blt
+      //  3'b101:  BranchControl = 1'b1;   // bge
+      //  3'b110:  BranchControl = 1'b1;   // bltu
+      //  3'b111:  BranchControl = 1'b1;   // bgeu
+       default: BranchControl = 1'bx; // ???
+     endcase // case (fucnct3)
+
+   assign PCSrc = (Branch & BranchControl) | Jump; // (Zero ^ funct3[0]) adjusts the condition based on the type of branch
    
 endmodule // controller
 
@@ -192,7 +207,7 @@ endmodule // aludec
 
 module datapath (input  logic        clk, reset,
 		 input  logic [1:0]  ResultSrc,
-		 input  logic 	     PCSrc, ALUSrc, ALUsrcA,
+		 input  logic 	     PCSrc, ALUSrc, ALUSrcA,
 		 input  logic 	     RegWrite,
 		 input  logic [2:0]  ImmSrc,
 		 input  logic [3:0]  ALUControl,
@@ -217,22 +232,6 @@ module datapath (input  logic        clk, reset,
 	       Instr[11:7], Result, RD1Data, WriteData); // 
    extend  ext (Instr[31:7], ImmSrc, ImmExt);
    // ALU logic
-/*module mux3 #(parameter WIDTH = 8)
-   (input  logic [WIDTH-1:0] d0, d1, d2,
-    input logic [1:0] 	     s,
-    output logic [WIDTH-1:0] y);
-   
-  assign y = s[1] ? d2 : (s[0] ? d1 : d0);
-  
-  module mux2 #(parameter WIDTH = 8)
-   (input  logic [WIDTH-1:0] d0, d1,
-    input logic 	     s,
-    output logic [WIDTH-1:0] y);
-   
-  assign y = s ? d1 : d0;
-   
-endmodule // mux2*/
-
    mux2 #(32)  srcamux (RD1Data, PC, ALUSrcA, SrcA); 
    mux2 #(32)  srcbmux (WriteData, ImmExt, ALUSrc, SrcB);
    alu  alu (SrcA, SrcB, ALUControl, ALUResult, Zero);
