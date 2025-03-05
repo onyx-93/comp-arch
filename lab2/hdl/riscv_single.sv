@@ -50,7 +50,7 @@ module testbench();
    initial
      begin
 	string memfilename;
-        memfilename = {"../riscvtest/xor-test.memfile"};
+        memfilename = {"../testing/bne.memfile"};
         $readmemh(memfilename, dut.imem.RAM);
      end
 
@@ -124,19 +124,19 @@ module controller (input  logic [6:0] op,
 	       ALUSrc, ALUSrcA, RegWrite, Jump, ImmSrc, ALUOp);
    aludec ad (op[5], funct3, funct7b5, ALUOp, ALUControl);
 
-    assign BranchControl = Zero;
+
    
-   always_comb
-     case(funct3)
-       // 
-       3'b000:  BranchControl == 1;   // beq
-      //  3'b001:  BranchControl = 1'b1;   // bne
-      //  3'b100:  BranchControl = 1'b1;   // blt
-      //  3'b101:  BranchControl = 1'b1;   // bge
-      //  3'b110:  BranchControl = 1'b1;   // bltu
-      //  3'b111:  BranchControl = 1'b1;   // bgeu
-       default: BranchControl = 1'bx; // ???
-     endcase // case (fucnct3)
+   always_comb begin
+     case (funct3)
+       3'b000: BranchControl = Zero;       // beq: branch if equal
+       3'b001: BranchControl = !Zero;      // bne: branch if not equal
+      //  3'b100: BranchControl = /* condition for blt */ 1'b0;
+      //  3'b101: BranchControl = /* condition for bge */ 1'b0;
+      //  3'b110: BranchControl = /* condition for bltu */ 1'b0;
+      //  3'b111: BranchControl = /* condition for bgeu */ 1'b0;
+       default: BranchControl = 1'bx;      // Undefined or error state
+     endcase
+   end
 
    assign PCSrc = (Branch & BranchControl) | Jump; // (Zero ^ funct3[0]) adjusts the condition based on the type of branch
    
@@ -326,7 +326,7 @@ endmodule // top
 module imem (input  logic [31:0] a,
 	     output logic [31:0] rd);
    
-   logic [31:0] 		 RAM[63:0];
+   logic [31:0] 		 RAM[65:0];
    
    assign rd = RAM[a[31:2]]; // word aligned
    
