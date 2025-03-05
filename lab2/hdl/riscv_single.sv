@@ -33,7 +33,7 @@
 */
 
 
-// ALUControl was expanded to 4 bits to allow more ALU operations
+
 
 module testbench();
 
@@ -92,7 +92,7 @@ module riscvsingle (input  logic        clk, reset,
    logic 				ALUSrc,ALUSrcA, RegWrite, Jump, Zero, V, C;  //ALUsrcA mux added between regfile and ALU
    logic [1:0] 				ResultSrc;
    logic [2:0]        ImmSrc; // just expanded to allow more immmediate bit distrubution
-   logic [3:0] 				ALUControl;
+   logic [3:0] 				ALUControl; // ALUControl was expanded to 4 bits to allow more ALU operations
    
    controller c (Instr[6:0], Instr[14:12], Instr[30], Zero, ALUResult[31], V, C, // added N = ALUResult[31]
 		 ResultSrc, MemWrite, PCSrc,
@@ -123,7 +123,7 @@ module controller (input  logic [6:0] op,
 		   output logic [3:0] ALUControl);
    
    logic [2:0] 			      ALUOp;
-   logic 			      Branch, BranchControl, add;
+   logic 			      Branch, BranchControl;
    
    maindec md (op, ResultSrc, MemWrite, Branch,
 	       ALUSrc, ALUSrcA, RegWrite, Jump, ImmSrc, ALUOp);
@@ -148,10 +148,10 @@ endmodule // controller
 module maindec (input  logic [6:0] op,
 		output logic [1:0] ResultSrc, 
 		output logic 	   MemWrite,
-		output logic 	   Branch, ALUSrc, ALUSrcA, //ALUSrcA signal to indicate mux to choose PC value 3 bit
+		output logic 	   Branch, ALUSrc, ALUSrcA, //ALUSrcA signal to indicate mux to choose PC value RD1
 		output logic 	   RegWrite, Jump,
 		output logic [2:0] ImmSrc,
-		output logic [2:0] ALUOp); 
+		output logic [2:0] ALUOp); // ALUOp was expanded to 3 bits to allow more ALU operations
    
    logic [13:0] 		   controls;
    
@@ -199,7 +199,7 @@ module aludec (input  logic       opb5,
 		  4'b0110: ALUControl = 4'b0011; // or, ori
 		  4'b0111: ALUControl = 4'b0010; // and, andi
 		  4'b0100: ALUControl = 4'b0100; // xor, xori	
-      4'b0001: ALUControl = 4'b0111; // sll (just implemented)	 it worked! 
+      4'b0001: ALUControl = 4'b0111; // sll, slli (just implemented)	 it worked! 
       4'b0101: ALUControl = funct7b5 ? 4'b1001 : 4'b1000; // sra,srai if funct7b5=1, else srl,srli
 
 		  default: ALUControl = 4'bxxxx; // ???
@@ -235,7 +235,7 @@ module datapath (input  logic        clk, reset,
 	       Instr[11:7], Result, RD1Data, WriteData); // 
    extend  ext (Instr[31:7], ImmSrc, ImmExt);
    // ALU logic
-   mux2 #(32)  srcamux (RD1Data, PC, ALUSrcA, SrcA); 
+   mux2 #(32)  srcamux (RD1Data, PC, ALUSrcA, SrcA); // new mux added
    mux2 #(32)  srcbmux (WriteData, ImmExt, ALUSrc, SrcB);
    alu  alu (SrcA, SrcB, ALUControl, ALUResult, Zero, V, C);
    mux3 #(32) resultmux (ALUResult, ReadData, PCPlus4,ResultSrc, Result);
@@ -329,7 +329,7 @@ endmodule // top
 module imem (input  logic [31:0] a,
 	     output logic [31:0] rd);
    
-   logic [31:0] 		 RAM[206:0];
+   logic [31:0] 		 RAM[206:0]; // RAM was expanded to allow all the instructions found in the testing directory
    
    assign rd = RAM[a[31:2]]; // word aligned
    
