@@ -11,10 +11,10 @@ z2
 cModel Technology
 Z0 dC:/Users/Owner/comp-arch/lab2/hdl
 T_opt
-!s110 1741151348
-Vl29?jbL2hT<zc72U?oj>F2
+!s110 1741211929
+V<5DUaHKVBSaB^FoOR0;7L1
 04 9 4 work testbench fast 0
-=1-484d7eca8aaf-67c7dc73-311-6df0
+=1-484d7eca8aaf-67c8c919-164-10644
 !s124 OEM100
 o-quiet -auto_acc_if_foreign -work work -debugdb +acc
 Z1 tCvgOpt 0
@@ -22,13 +22,13 @@ n@_opt
 OL;O;2021.3;73
 vadder
 Z2 DXx6 sv_std 3 std 0 22 9oUSJO;AeEaW`l:M@^WG92
-Z3 !s110 1741151347
+Z3 !s110 1741211928
 !i10b 1
 !s100 HDzKT8R_6G3za;ji7E9JH0
 IIW@d>PmR389]95al^S55T1
 S1
 R0
-Z4 w1741151315
+Z4 w1741210984
 Z5 8riscv_single.sv
 Z6 Friscv_single.sv
 !i122 0
@@ -38,7 +38,7 @@ Z8 OL;L;2021.3;73
 r1
 !s85 0
 31
-Z9 !s108 1741151347.000000
+Z9 !s108 1741211928.000000
 Z10 !s107 riscv_single.sv|
 Z11 !s90 -reportprogress|300|riscv_single.sv|
 !i113 0
@@ -96,8 +96,8 @@ vcontroller
 R2
 R3
 !i10b 1
-!s100 ];7`Mi_Mn;7N7:T4`C]?_2
-ISZozAcO1bATSb>1YIoa7b2
+!s100 kZ^:NMB5mknVVkgbT54111
+I:=d?OAfM73MWG>[B`4]dM0
 S1
 R0
 R4
@@ -240,8 +240,8 @@ vimem
 R2
 R3
 !i10b 1
-!s100 ]YYRTJjK6Ga<:Ub87?djb0
-IIO>014c_dmR_ad16m@<FY0
+!s100 mfb_33EbOdoe8LN^deYTH2
+Iz[4;]VN<WaOYLVTdOGM]i2
 S1
 R0
 R4
@@ -384,8 +384,8 @@ vtestbench
 R2
 R3
 !i10b 1
-!s100 JkjMhVLd`1LMWmJXoY27G0
-IjC^JlB<60BYi9LS<<9o511
+!s100 E2jSl_OR?PTeIWfdVB2SL3
+ITYkZ_1oCA>^]oScPIeD3b1
 S1
 R0
 R4

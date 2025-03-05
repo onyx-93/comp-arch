@@ -71,10 +71,10 @@ module testbench();
    always @(negedge clk)
      begin
 	if(MemWrite) begin
-           if(DataAdr === 100 & WriteData === 25) begin
+           if(DataAdr === 100 & WriteData === 10) begin
               $display("Simulation succeeded");
               $stop;
-           end else if (DataAdr !== 96) begin
+           end else if (DataAdr !== 17) begin
               $display("Simulation failed");
               $stop;
            end
@@ -329,7 +329,7 @@ endmodule // top
 module imem (input  logic [31:0] a,
 	     output logic [31:0] rd);
    
-   logic [31:0] 		 RAM[206:0]; // RAM was expanded to allow all the instructions found in the testing directory
+   logic [31:0] 		 RAM[209:0]; // RAM was expanded to allow all the instructions found in the testing directory
    
    assign rd = RAM[a[31:2]]; // word aligned
    
