@@ -93,15 +93,16 @@ module riscvsingle (input  logic        clk, reset,
    logic 				ALUSrc,ALUSrcA, RegWrite, Jump, Zero, V, C;  //ALUsrcA mux added between regfile and ALU
    logic [1:0] 				ResultSrc;
    logic [2:0]        ImmSrc; // just expanded to allow more immmediate bit distrubution
-   logic [3:0] 				ALUControl; // ALUControl was expanded to 4 bits to allow more ALU operations
+   // ALUControl was expanded to 4 bits to allow more ALU operations, LoadFunct3 is  is the signal wire that will indicate which type of load operation will be executed
+   logic [3:0] 				ALUControl, LoadFunct3; 
    
    controller c (Instr[6:0], Instr[14:12], Instr[30], Zero, ALUResult[31], V, C, // added N = ALUResult[31]
 		 ResultSrc, MemWrite, PCSrc,
 		 ALUSrc, ALUSrcA, RegWrite, Jump,
-		 ImmSrc, ALUControl);
+		 ImmSrc, ALUControl, LoadFunct3);
    datapath dp (clk, reset, ResultSrc, PCSrc,
 		ALUSrc, ALUSrcA, RegWrite,
-		ImmSrc, ALUControl,
+		ImmSrc, ALUControl, LoadFunct3,
 		Zero, V, C, PC, Instr,
 		ALUResult, WriteData, ReadData);
    
@@ -121,14 +122,14 @@ module controller (input  logic [6:0] op,
 		   output logic       PCSrc, ALUSrc, ALUSrcA,
 		   output logic       RegWrite, Jump,
 		   output logic [2:0] ImmSrc,
-		   output logic [3:0] ALUControl);
+		   output logic [3:0] ALUControl, LoadFunct3);
    
    logic [2:0] 			      ALUOp;
    logic 			      Branch, BranchControl;
    
    maindec md (op, ResultSrc, MemWrite, Branch,
 	       ALUSrc, ALUSrcA, RegWrite, Jump, ImmSrc, ALUOp);
-   aludec ad (op[5], funct3, funct7b5, ALUOp, ALUControl);
+   aludec ad (op[5], funct3, funct7b5, ALUOp, ALUControl, LoadFunct3);
    
    always_comb begin
      case (funct3)
@@ -143,6 +144,9 @@ module controller (input  logic [6:0] op,
    end
 
    assign PCSrc = (Branch & BranchControl) | Jump; // BranchControl adjusts the condition based on the type of branch
+
+
+
    
 endmodule // controller
 
@@ -179,7 +183,7 @@ module aludec (input  logic       opb5,
 	       input  logic [2:0] funct3,
 	       input  logic 	  funct7b5,
 	       input  logic [2:0] ALUOp,
-	       output logic [3:0] ALUControl); 
+	       output logic [3:0] ALUControl, LoadFunct3); 
    
    logic 			  RtypeSub;
    
@@ -206,6 +210,18 @@ module aludec (input  logic       opb5,
 		  default: ALUControl = 4'bxxxx; // ???
 		endcase // case (funct3)       
      endcase // case (ALUOp)
+
+           /*load operations control unit was added to determine load operation*/
+   always_comb begin
+     case (funct3)
+       3'b000: LoadFunct3 = 4'b0000;     // lb
+       3'b001: LoadFunct3 = 4'b0001;     // lh
+       3'b010: LoadFunct3 = 4'b0010;     // lw
+       3'b100: LoadFunct3 = 4'b0100;     // lbu
+       3'b101: LoadFunct3 = 4'b0101;     // lhu
+       default: LoadFunct3 = 4'bxxxx;     // Undefined or error state
+     endcase
+   end
    
 endmodule // aludec
 
@@ -214,7 +230,7 @@ module datapath (input  logic        clk, reset,
 		 input  logic 	     PCSrc, ALUSrc, ALUSrcA,
 		 input  logic 	     RegWrite,
 		 input  logic [2:0]  ImmSrc,
-		 input  logic [3:0]  ALUControl,
+		 input  logic [3:0]  ALUControl, LoadFunct3,
 		 output logic 	     Zero, V, C,
 		 output logic [31:0] PC,
 		 input  logic [31:0] Instr,
@@ -223,7 +239,7 @@ module datapath (input  logic        clk, reset,
    
    logic [31:0] 		     PCNext, PCPlus4, PCTarget;
    logic [31:0] 		     ImmExt;
-   logic [31:0] 		     RD1Data, SrcA, SrcB;
+   logic [31:0] 		     RD1Data, SrcA, SrcB, LoadOut;
    logic [31:0] 		     Result;
    
  // next PC logic
@@ -239,10 +255,57 @@ module datapath (input  logic        clk, reset,
    mux2 #(32)  srcamux (RD1Data, PC, ALUSrcA, SrcA); // new mux added
    mux2 #(32)  srcbmux (WriteData, ImmExt, ALUSrc, SrcB);
    alu  alu (SrcA, SrcB, ALUControl, ALUResult, Zero, V, C);
-   mux3 #(32) resultmux (ALUResult, ReadData, PCPlus4,ResultSrc, Result);
+   load  ld (ReadData, LoadFunct3, LoadOut);    // Load Operation Block
+   mux3 #(32) resultmux (ALUResult, LoadOut, PCPlus4,ResultSrc, Result);
 
 
 endmodule // datapath
+
+module load (input logic [31:0] ReadData,
+             input logic [3:0] LoadFunct3,
+             output logic[31:0] LoadOut);
+
+    logic [1:0] DataAddressLb;
+    assign DataAddressLb
+    logic DataAddressLh;
+  
+  
+  /* figure out how to connect DataAddressLb to the address of the each section of the 32 bit input data (11,10,01,00) 
+  each of those two digits represents 1 byte = 8 bits
+  */
+  
+  /*load operations control unit was added to determine load operation*/
+   always_comb begin
+     case (LoadFunct3)// LoadFunct3 is the fucnt3 if each load instruction
+       
+       4'b0000: // case lb
+       case(DataAddressLb)
+       2'b00: LoadOut = {{24{ReadData[7]}}, ReadData[7:0]};
+       2'b01: LoadOut = {{24{ReadData[15]}}, ReadData[15:8]};
+       2'b10: LoadOut = {{24{ReadData[23]}}, ReadData[23:16]};
+       2'b11: LoadOut = {{24{ReadData[31]}}, ReadData[31:24]};
+       defalut: LoadOut = 32'bx;
+       endcase
+
+       4'b0001: // case lh
+       case(DataAddressLh)
+       1'b0: LoadOut = {{16{ReadData[15]}}, ReadData[15:0]}; 
+       1'b1: LoadOut = {{16{ReadData[31]}}, ReadData[31:16]}; 
+       defalut: LoadOut = 32'bx;
+       endcase
+
+       4'b0010: // case lw
+       case()
+       defalut
+       endcase
+      //  4'b0100: LoadInstruction    // lbu
+      //  4'b0101: LoadInstruction    // lhu
+       default: LoadFunct3 = 4'bx;     // Undefined or error state
+     endcase
+   end
+    
+  
+endmodule
 
 module adder (input  logic [31:0] a, b,
 	      output logic [31:0] y);
@@ -383,7 +446,7 @@ module alu (input  logic [31:0] a, b,
      endcase
 
    assign zero = (result == 32'b0);
-   assign V = ~(alucontrol[0] ^ a[31] ^ b[31]) & (a[31] ^ sum[31]) & isAddSub;  // v is overflow
+   assign V = ~(alucontrol[0] ^ a[31] ^ b[31]) & (a[31] ^ sum[31]) & isAddSub;  // V is overflow
    
 endmodule // alu
 
