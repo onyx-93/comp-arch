@@ -13,7 +13,7 @@
 # //
 # do riscv_single.do
 # Model Technology ModelSim SE-64 vlog 2021.3 Compiler 2021.07 Jul 13 2021
-# Start time: 15:58:48 on Mar 05,2025
+# Start time: 22:15:07 on Mar 08,2025
 # vlog -reportprogress 300 riscv_single.sv 
 # -- Compiling module testbench
 # -- Compiling module riscvsingle
@@ -21,6 +21,7 @@
 # -- Compiling module maindec
 # -- Compiling module aludec
 # -- Compiling module datapath
+# -- Compiling module load
 # -- Compiling module adder
 # -- Compiling module extend
 # -- Compiling module flopr
@@ -36,13 +37,13 @@
 # Top level modules:
 # 	testbench
 # 	flopenr
-# End time: 15:58:48 on Mar 05,2025, Elapsed time: 0:00:00
+# End time: 22:15:07 on Mar 08,2025, Elapsed time: 0:00:00
 # Errors: 0, Warnings: 0
 # vsim -debugdb -voptargs="+acc" work.testbench 
-# Start time: 15:58:48 on Mar 05,2025
+# Start time: 22:15:07 on Mar 08,2025
 # ** Note: (vsim-3812) Design is being optimized...
 # ** Note: (vsim-8611) Generating debug db.
-# ** Note: (vopt-4301) Memory core inferred for signal 'RAM' width=32, depth=256, type=RAM at location riscv_single.sv:342
+# ** Note: (vopt-4301) Memory core inferred for signal 'RAM' width=32, depth=1027, type=RAM at location riscv_single.sv:430
 # Loading sv_std.std
 # Loading work.testbench(fast)
 # Loading work.top(fast)
@@ -57,13 +58,10 @@
 # Loading work.regfile(fast)
 # Loading work.extend(fast)
 # Loading work.alu(fast)
+# Loading work.load(fast)
 # Loading work.mux3(fast)
 # Loading work.imem(fast)
 # Loading work.dmem(fast)
 # ** Note: (vsim-8900) Creating design debug database vsim.dbg.
-# Simulation succeeded
-# ** Note: $stop    : riscv_single.sv(76)
-#    Time: 2885 ns  Iteration: 1  Instance: /testbench
-# Break in Module testbench at riscv_single.sv line 76
-# End time: 16:08:47 on Mar 05,2025, Elapsed time: 0:09:59
+# End time: 22:15:55 on Mar 08,2025, Elapsed time: 0:00:48
 # Errors: 0, Warnings: 0

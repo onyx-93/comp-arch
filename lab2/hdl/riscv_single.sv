@@ -51,7 +51,7 @@ module testbench();
    initial
      begin
 	string memfilename;
-        memfilename = {"../testing/bgeu.memfile"};
+        memfilename = {"../testing/lb.memfile"};
         $readmemh(memfilename, dut.imem.RAM);
      end
 
@@ -212,7 +212,7 @@ module aludec (input  logic       opb5,
      endcase // case (ALUOp)
 
            /*load operations control unit was added to determine load operation*/
-   always_comb begin
+   always_comb //begin
      case (funct3)
        3'b000: LoadFunct3 = 4'b0000;     // lb
        3'b001: LoadFunct3 = 4'b0001;     // lh
@@ -221,7 +221,7 @@ module aludec (input  logic       opb5,
        3'b101: LoadFunct3 = 4'b0101;     // lhu
        default: LoadFunct3 = 4'bxxxx;     // Undefined or error state
      endcase
-   end
+  // end
    
 endmodule // aludec
 
@@ -241,7 +241,10 @@ module datapath (input  logic        clk, reset,
    logic [31:0] 		     ImmExt;
    logic [31:0] 		     RD1Data, SrcA, SrcB, LoadOut;
    logic [31:0] 		     Result;
-   
+   logic [1:0]           Address;
+
+   assign Address = ALUResult[1:0];   // I intend to use the last two bits of the address of ReadData to load the correct byte 
+
  // next PC logic
    flopr #(32) pcreg (clk, reset, PCNext, PC);
    adder  pcadd4 (PC, 32'd4, PCPlus4);
@@ -255,57 +258,78 @@ module datapath (input  logic        clk, reset,
    mux2 #(32)  srcamux (RD1Data, PC, ALUSrcA, SrcA); // new mux added
    mux2 #(32)  srcbmux (WriteData, ImmExt, ALUSrc, SrcB);
    alu  alu (SrcA, SrcB, ALUControl, ALUResult, Zero, V, C);
-   load  ld (ReadData, LoadFunct3, LoadOut);    // Load Operation Block
+   load  ld (ReadData, LoadFunct3, Address, LoadOut);    // Load Operation Block
    mux3 #(32) resultmux (ALUResult, LoadOut, PCPlus4,ResultSrc, Result);
 
 
 endmodule // datapath
 
-module load (input logic [31:0] ReadData,
-             input logic [3:0] LoadFunct3,
-             output logic[31:0] LoadOut);
+module load (
+  input  logic [31:0] ReadData,
+  input  logic [3:0]  LoadFunct3,
+  input  logic [1:0]  Address,      // lower two bits of the memory address
+  output logic [31:0] LoadOut
+);
 
-    logic [1:0] DataAddressLb;
-    assign DataAddressLb
-    logic DataAddressLh;
-  
-  
-  /* figure out how to connect DataAddressLb to the address of the each section of the 32 bit input data (11,10,01,00) 
-  each of those two digits represents 1 byte = 8 bits
-  */
-  
-  /*load operations control unit was added to determine load operation*/
-   always_comb begin
-     case (LoadFunct3)// LoadFunct3 is the fucnt3 if each load instruction
-       
-       4'b0000: // case lb
-       case(DataAddressLb)
-       2'b00: LoadOut = {{24{ReadData[7]}}, ReadData[7:0]};
-       2'b01: LoadOut = {{24{ReadData[15]}}, ReadData[15:8]};
-       2'b10: LoadOut = {{24{ReadData[23]}}, ReadData[23:16]};
-       2'b11: LoadOut = {{24{ReadData[31]}}, ReadData[31:24]};
-       defalut: LoadOut = 32'bx;
-       endcase
+  // For byte loads, the 2-bit address selects one of the four bytes.
+  logic [1:0] DataAddressLb;
+  assign DataAddressLb = Address;
 
-       4'b0001: // case lh
-       case(DataAddressLh)
-       1'b0: LoadOut = {{16{ReadData[15]}}, ReadData[15:0]}; 
-       1'b1: LoadOut = {{16{ReadData[31]}}, ReadData[31:16]}; 
-       defalut: LoadOut = 32'bx;
-       endcase
+  // For half-word loads, only one bit is needed to select the lower or upper half.
+  logic DataAddressLh;
+  assign DataAddressLh = Address[1];
 
-       4'b0010: // case lw
-       case()
-       defalut
-       endcase
-      //  4'b0100: LoadInstruction    // lbu
-      //  4'b0101: LoadInstruction    // lhu
-       default: LoadFunct3 = 4'bx;     // Undefined or error state
-     endcase
-   end
-    
-  
+  // Load operations control unit
+  always_comb begin
+    case (LoadFunct3)
+      4'b0000: begin // lb (load byte) with sign extension
+        case (DataAddressLb)
+          2'b00: LoadOut = {{24{ReadData[7]}},  ReadData[7:0]};
+          2'b01: LoadOut = {{24{ReadData[15]}}, ReadData[15:8]};
+          2'b10: LoadOut = {{24{ReadData[23]}}, ReadData[23:16]};
+          2'b11: LoadOut = {{24{ReadData[31]}}, ReadData[31:24]};
+          default: LoadOut = 32'bx;
+        endcase
+      end
+
+      4'b0001: begin // lh (load half-word) with sign extension
+        case (DataAddressLh)
+          1'b0: LoadOut = {{16{ReadData[15]}}, ReadData[15:0]};
+          1'b1: LoadOut = {{16{ReadData[31]}}, ReadData[31:16]};
+          default: LoadOut = 32'bx;
+        endcase
+      end
+
+      4'b0010: begin // lw (load word)
+        LoadOut = ReadData;
+      end
+
+      4'b0100: begin // lbu (load byte unsigned)
+        case (DataAddressLb)
+          2'b00: LoadOut = {24'b0, ReadData[7:0]};
+          2'b01: LoadOut = {24'b0, ReadData[15:8]};
+          2'b10: LoadOut = {24'b0, ReadData[23:16]};
+          2'b11: LoadOut = {24'b0, ReadData[31:24]};
+          default: LoadOut = 32'bx;
+        endcase
+      end
+
+      4'b0101: begin // lhu (load half-word unsigned)
+        case (DataAddressLh)
+          1'b0: LoadOut = {16'b0, ReadData[15:0]};
+          1'b1: LoadOut = {16'b0, ReadData[31:16]};
+          default: LoadOut = 32'bx;
+        endcase
+      end
+
+      default: begin
+        LoadOut = 32'bx; // Undefined or error state
+      end
+    endcase
+  end
+
 endmodule
+
 
 module adder (input  logic [31:0] a, b,
 	      output logic [31:0] y);
@@ -393,7 +417,7 @@ endmodule // top
 module imem (input  logic [31:0] a,
 	     output logic [31:0] rd);
    
-   logic [31:0] 		 RAM[209:0]; // RAM was expanded to allow all the instructions found in the testing directory
+   logic [31:0] 		 RAM[1026:0]; // RAM was expanded to allow all the instructions found in the testing directory
    
    assign rd = RAM[a[31:2]]; // word aligned
    
@@ -403,7 +427,7 @@ module dmem (input  logic        clk, we,
 	     input  logic [31:0] a, wd,
 	     output logic [31:0] rd);
    
-   logic [31:0] 		 RAM[255:0];
+   logic [31:0] 		 RAM[1026:0];
    
    assign rd = RAM[a[31:2]]; // word aligned
    always_ff @(posedge clk)
