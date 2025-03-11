@@ -51,10 +51,11 @@ module testbench();
    initial
      begin
 	string memfilename;
-        memfilename = {"../testing/lb.memfile"};
-        $readmemh(memfilename, dut.imem.RAM);
+        memfilename = {"../testing/lw.memfile"};
+        $readmemh(memfilename, dut.imem.RAM, dut.dmem.RAM);
+        $readmemh(memfilename, dut.dmem.RAM);
      end
-
+// lb success, lbu, lh,lhu, lw
    
    // initialize test
    initial
@@ -144,9 +145,6 @@ module controller (input  logic [6:0] op,
    end
 
    assign PCSrc = (Branch & BranchControl) | Jump; // BranchControl adjusts the condition based on the type of branch
-
-
-
    
 endmodule // controller
 
@@ -194,24 +192,24 @@ module aludec (input  logic       opb5,
        3'b001: ALUControl = 4'b0001; // subtraction
        3'b011: ALUControl = 4'b1111; // lui
        3'b100: ALUControl = 4'b1011; // auipc
-       default: case(funct3) // R–type or I–type ALU
-		  4'b0000: if (RtypeSub)
-		    ALUControl = 4'b0001; // sub
-		  else
-		    ALUControl = 4'b0000; // add, addi
-		  4'b0010: ALUControl = 4'b0101; // slt, slti
-      4'b0011: ALUControl = 4'b0110; // sltu (just implemented)	 it worked
-		  4'b0110: ALUControl = 4'b0011; // or, ori
-		  4'b0111: ALUControl = 4'b0010; // and, andi
-		  4'b0100: ALUControl = 4'b0100; // xor, xori	
-      4'b0001: ALUControl = 4'b0111; // sll, slli (just implemented)	 it worked! 
-      4'b0101: ALUControl = funct7b5 ? 4'b1001 : 4'b1000; // sra,srai if funct7b5=1, else srl,srli
-
-		  default: ALUControl = 4'bxxxx; // ???
-		endcase // case (funct3)       
+       default: 
+       case(funct3) // R–type or I–type ALU
+		     3'b000: if (RtypeSub) 
+		             ALUControl = 4'b0001; // sub
+		             else
+		             ALUControl = 4'b0000; // add, addi
+		     3'b010: ALUControl = 4'b0101; // slt, slti
+         3'b011: ALUControl = 4'b0110; // sltu (just implemented)	 it worked
+		     3'b110: ALUControl = 4'b0011; // or, ori
+		     3'b111: ALUControl = 4'b0010; // and, andi
+		     3'b100: ALUControl = 4'b0100; // xor, xori	
+         3'b001: ALUControl = 4'b0111; // sll, slli (just implemented)	 it worked! 
+         3'b101: ALUControl = funct7b5 ? 4'b1001 : 4'b1000; // sra,srai if funct7b5=1, else srl,srli
+		    default: ALUControl = 4'bx; // ???
+		    endcase // case (funct3)       
      endcase // case (ALUOp)
 
-           /*load operations control unit was added to determine load operation*/
+  /*load operations control unit was added to determine load operation*/
    always_comb //begin
      case (funct3)
        3'b000: LoadFunct3 = 4'b0000;     // lb
@@ -241,9 +239,6 @@ module datapath (input  logic        clk, reset,
    logic [31:0] 		     ImmExt;
    logic [31:0] 		     RD1Data, SrcA, SrcB, LoadOut;
    logic [31:0] 		     Result;
-   logic [1:0]           Address;
-
-   assign Address = ALUResult[1:0];   // I intend to use the last two bits of the address of ReadData to load the correct byte 
 
  // next PC logic
    flopr #(32) pcreg (clk, reset, PCNext, PC);
@@ -258,7 +253,8 @@ module datapath (input  logic        clk, reset,
    mux2 #(32)  srcamux (RD1Data, PC, ALUSrcA, SrcA); // new mux added
    mux2 #(32)  srcbmux (WriteData, ImmExt, ALUSrc, SrcB);
    alu  alu (SrcA, SrcB, ALUControl, ALUResult, Zero, V, C);
-   load  ld (ReadData, LoadFunct3, Address, LoadOut);    // Load Operation Block
+   // Load Operation Block 
+   load  ld (ReadData, ALUResult[1:0], LoadFunct3, LoadOut); // ALUResult[1:0] is used to select and load the correct byte
    mux3 #(32) resultmux (ALUResult, LoadOut, PCPlus4,ResultSrc, Result);
 
 
@@ -266,24 +262,16 @@ endmodule // datapath
 
 module load (
   input  logic [31:0] ReadData,
+  input  logic [1:0]  Address,      // lower two bits of the ReadData
   input  logic [3:0]  LoadFunct3,
-  input  logic [1:0]  Address,      // lower two bits of the memory address
   output logic [31:0] LoadOut
 );
-
-  // For byte loads, the 2-bit address selects one of the four bytes.
-  logic [1:0] DataAddressLb;
-  assign DataAddressLb = Address;
-
-  // For half-word loads, only one bit is needed to select the lower or upper half.
-  logic DataAddressLh;
-  assign DataAddressLh = Address[1];
 
   // Load operations control unit
   always_comb begin
     case (LoadFunct3)
       4'b0000: begin // lb (load byte) with sign extension
-        case (DataAddressLb)
+        case (Address)
           2'b00: LoadOut = {{24{ReadData[7]}},  ReadData[7:0]};
           2'b01: LoadOut = {{24{ReadData[15]}}, ReadData[15:8]};
           2'b10: LoadOut = {{24{ReadData[23]}}, ReadData[23:16]};
@@ -293,19 +281,17 @@ module load (
       end
 
       4'b0001: begin // lh (load half-word) with sign extension
-        case (DataAddressLh)
+        case (Address[1])
           1'b0: LoadOut = {{16{ReadData[15]}}, ReadData[15:0]};
           1'b1: LoadOut = {{16{ReadData[31]}}, ReadData[31:16]};
           default: LoadOut = 32'bx;
         endcase
       end
 
-      4'b0010: begin // lw (load word)
-        LoadOut = ReadData;
-      end
+      4'b0010: LoadOut = ReadData; // lw (load word)
 
       4'b0100: begin // lbu (load byte unsigned)
-        case (DataAddressLb)
+        case (Address)
           2'b00: LoadOut = {24'b0, ReadData[7:0]};
           2'b01: LoadOut = {24'b0, ReadData[15:8]};
           2'b10: LoadOut = {24'b0, ReadData[23:16]};
@@ -315,16 +301,14 @@ module load (
       end
 
       4'b0101: begin // lhu (load half-word unsigned)
-        case (DataAddressLh)
+        case (Address[1])
           1'b0: LoadOut = {16'b0, ReadData[15:0]};
           1'b1: LoadOut = {16'b0, ReadData[31:16]};
           default: LoadOut = 32'bx;
         endcase
       end
 
-      default: begin
-        LoadOut = 32'bx; // Undefined or error state
-      end
+      default: LoadOut = 32'bx; // Undefined or error state
     endcase
   end
 
@@ -417,7 +401,7 @@ endmodule // top
 module imem (input  logic [31:0] a,
 	     output logic [31:0] rd);
    
-   logic [31:0] 		 RAM[1026:0]; // RAM was expanded to allow all the instructions found in the testing directory
+   logic [31:0] 		 RAM[1029:0]; // RAM was expanded to allow all the instructions found in the testing directory
    
    assign rd = RAM[a[31:2]]; // word aligned
    
@@ -427,7 +411,7 @@ module dmem (input  logic        clk, we,
 	     input  logic [31:0] a, wd,
 	     output logic [31:0] rd);
    
-   logic [31:0] 		 RAM[1026:0];
+   logic [31:0] 		 RAM[1029:0];
    
    assign rd = RAM[a[31:2]]; // word aligned
    always_ff @(posedge clk)
