@@ -241,7 +241,7 @@ module datapath (input  logic        clk, reset,
    logic [31:0] 		     RD1Data, SrcA, SrcB, LoadOut;
    logic [31:0] 		     Result;
 
-   // jalr mux where ALUResult will become the new PC
+   // jalr mux where ALUResult will become the new PC only when ALUPC is high
    mux2 #(32)  jalrmux (PCNext, ALUResult, ALUPC, NewPCNext);
    // next PC logic
    flopr #(32) pcreg (clk, reset, NewPCNext, PC);
