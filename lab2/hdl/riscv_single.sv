@@ -51,9 +51,9 @@ module testbench();
    initial
      begin
 	string memfilename;
-        memfilename = {"../testing/lw.memfile"};
+        memfilename = {"../testing/jalr.memfile"};
         $readmemh(memfilename, dut.imem.RAM, dut.dmem.RAM);
-        $readmemh(memfilename, dut.dmem.RAM);
+        $readmemh(memfilename, dut.dmem.RAM); // load the memfile into dmem to be able to access the hardcoded constants
      end
 // lb success, lbu, lh,lhu, lw
    
@@ -91,18 +91,18 @@ module riscvsingle (input  logic        clk, reset,
 		    output logic [31:0] ALUResult, WriteData,
 		    input  logic [31:0] ReadData);
    
-   logic 				ALUSrc,ALUSrcA, RegWrite, Jump, Zero, V, C;  //ALUsrcA mux added between regfile and ALU
+   logic 				ALUSrc,ALUSrcA, ALUPC, RegWrite, Jump, Zero, V, C;  //ALUsrcA mux added between regfile and ALU
    logic [1:0] 				ResultSrc;
    logic [2:0]        ImmSrc; // just expanded to allow more immmediate bit distrubution
    // ALUControl was expanded to 4 bits to allow more ALU operations, LoadFunct3 is  is the signal wire that will indicate which type of load operation will be executed
-   logic [3:0] 				ALUControl, LoadFunct3; 
+   logic [3:0] 				ALUControl, LoadFunct3; // LoadFunct3 is the signal that determines the type of load 
    
    controller c (Instr[6:0], Instr[14:12], Instr[30], Zero, ALUResult[31], V, C, // added N = ALUResult[31]
 		 ResultSrc, MemWrite, PCSrc,
-		 ALUSrc, ALUSrcA, RegWrite, Jump,
+		 ALUSrc, ALUSrcA, ALUPC, RegWrite, Jump,
 		 ImmSrc, ALUControl, LoadFunct3);
    datapath dp (clk, reset, ResultSrc, PCSrc,
-		ALUSrc, ALUSrcA, RegWrite,
+		ALUSrc, ALUSrcA, ALUPC, RegWrite,
 		ImmSrc, ALUControl, LoadFunct3,
 		Zero, V, C, PC, Instr,
 		ALUResult, WriteData, ReadData);
@@ -120,7 +120,7 @@ module controller (input  logic [6:0] op,
 		   input  logic       Zero, N, V, C, 
 		   output logic [1:0] ResultSrc,
 		   output logic       MemWrite,
-		   output logic       PCSrc, ALUSrc, ALUSrcA,
+		   output logic       PCSrc, ALUSrc, ALUSrcA, ALUPC,
 		   output logic       RegWrite, Jump,
 		   output logic [2:0] ImmSrc,
 		   output logic [3:0] ALUControl, LoadFunct3);
@@ -129,7 +129,7 @@ module controller (input  logic [6:0] op,
    logic 			      Branch, BranchControl;
    
    maindec md (op, ResultSrc, MemWrite, Branch,
-	       ALUSrc, ALUSrcA, RegWrite, Jump, ImmSrc, ALUOp);
+	       ALUSrc, ALUSrcA, ALUPC, RegWrite, Jump, ImmSrc, ALUOp);
    aludec ad (op[5], funct3, funct7b5, ALUOp, ALUControl, LoadFunct3);
    
    always_comb begin
@@ -151,28 +151,29 @@ endmodule // controller
 module maindec (input  logic [6:0] op,
 		output logic [1:0] ResultSrc, 
 		output logic 	   MemWrite,
-		output logic 	   Branch, ALUSrc, ALUSrcA, //ALUSrcA signal to indicate mux to choose PC value RD1
+		output logic 	   Branch, ALUSrc, ALUSrcA, ALUPC, //ALUSrcA signal to indicate mux to choose PC value RD1
 		output logic 	   RegWrite, Jump,
 		output logic [2:0] ImmSrc,
 		output logic [2:0] ALUOp); // ALUOp was expanded to 3 bits to allow more ALU operations
    
-   logic [13:0] 		   controls;
+   logic [14:0] 		   controls;
    
    assign {RegWrite, ImmSrc, ALUSrc, MemWrite,
-	   ResultSrc, Branch, ALUOp, Jump, ALUSrcA} = controls;
+	   ResultSrc, Branch, ALUOp, Jump, ALUSrcA, ALUPC} = controls;
    
    always_comb
      case(op)
-       // RegWrite_ImmSrc_ALUSrc_MemWrite_ResultSrc_Branch_ALUOp_Jump_ALUSrcA
-       7'b0000011: controls = 14'b1_000_1_0_01_0_000_0_0; // lw
-       7'b0100011: controls = 14'b0_001_1_1_00_0_000_0_0; // sw
-       7'b0110011: controls = 14'b1_xxx_0_0_00_0_010_0_0; // R–type
-       7'b1100011: controls = 14'b0_010_0_0_00_1_001_0_0; // B- type
-       7'b0010011: controls = 14'b1_000_1_0_00_0_010_0_0; // I–type ALU
-       7'b1101111: controls = 14'b1_011_0_0_10_0_000_1_0; // jal
-       7'b0110111: controls = 14'b1_100_1_0_00_0_011_0_0; // lui
-       7'b0010111: controls = 14'b1_100_1_0_00_0_100_0_1; // auipc
-       default:    controls = 14'bx_xxx_x_x_xx_x_xxx_x_x; // ???
+       // RegWrite_ImmSrc_ALUSrc_MemWrite_ResultSrc_Branch_ALUOp_Jump_ALUSrcA_ALUPC
+       7'b0000011: controls = 15'b1_000_1_0_01_0_000_0_0_0; // lw
+       7'b0100011: controls = 15'b0_001_1_1_00_0_000_0_0_0; // sw
+       7'b0110011: controls = 15'b1_xxx_0_0_00_0_010_0_0_0; // R–type
+       7'b1100011: controls = 15'b0_010_0_0_00_1_001_0_0_0; // B- type
+       7'b0010011: controls = 15'b1_000_1_0_00_0_010_0_0_0; // I–type ALU
+       7'b1101111: controls = 15'b1_011_0_0_10_0_000_1_0_0; // jal
+       7'b0110111: controls = 15'b1_100_1_0_00_0_011_0_0_0; // lui
+       7'b0010111: controls = 15'b1_100_1_0_00_0_100_0_1_0; // auipc
+       7'b1100111: controls = 15'b1_000_1_0_10_0_010_0_0_1; // jalr
+       default:    controls = 15'bx_xxx_x_x_xx_x_xxx_x_x_x; // ???
      endcase // case (op)
    
 endmodule // maindec
@@ -225,7 +226,7 @@ endmodule // aludec
 
 module datapath (input  logic        clk, reset,
 		 input  logic [1:0]  ResultSrc,
-		 input  logic 	     PCSrc, ALUSrc, ALUSrcA,
+		 input  logic 	     PCSrc, ALUSrc, ALUSrcA, ALUPC,
 		 input  logic 	     RegWrite,
 		 input  logic [2:0]  ImmSrc,
 		 input  logic [3:0]  ALUControl, LoadFunct3,
@@ -235,13 +236,15 @@ module datapath (input  logic        clk, reset,
 		 output logic [31:0] ALUResult, WriteData,
 		 input  logic [31:0] ReadData);
    
-   logic [31:0] 		     PCNext, PCPlus4, PCTarget;
+   logic [31:0] 		     PCNext, PCPlus4, PCTarget, NewPCNext;
    logic [31:0] 		     ImmExt;
    logic [31:0] 		     RD1Data, SrcA, SrcB, LoadOut;
    logic [31:0] 		     Result;
 
- // next PC logic
-   flopr #(32) pcreg (clk, reset, PCNext, PC);
+   // jalr mux where ALUResult will become the new PC
+   mux2 #(32)  jalrmux (PCNext, ALUResult, ALUPC, NewPCNext);
+   // next PC logic
+   flopr #(32) pcreg (clk, reset, NewPCNext, PC);
    adder  pcadd4 (PC, 32'd4, PCPlus4);
    adder  pcaddbranch (PC, ImmExt, PCTarget);
    mux2 #(32)  pcmux (PCPlus4, PCTarget, PCSrc, PCNext);
@@ -262,10 +265,9 @@ endmodule // datapath
 
 module load (
   input  logic [31:0] ReadData,
-  input  logic [1:0]  Address,      // lower two bits of the ReadData
+  input  logic [1:0]  Address,      // lower two bits of ReadData
   input  logic [3:0]  LoadFunct3,
-  output logic [31:0] LoadOut
-);
+  output logic [31:0] LoadOut);
 
   // Load operations control unit
   always_comb begin
@@ -279,17 +281,6 @@ module load (
           default: LoadOut = 32'bx;
         endcase
       end
-
-      4'b0001: begin // lh (load half-word) with sign extension
-        case (Address[1])
-          1'b0: LoadOut = {{16{ReadData[15]}}, ReadData[15:0]};
-          1'b1: LoadOut = {{16{ReadData[31]}}, ReadData[31:16]};
-          default: LoadOut = 32'bx;
-        endcase
-      end
-
-      4'b0010: LoadOut = ReadData; // lw (load word)
-
       4'b0100: begin // lbu (load byte unsigned)
         case (Address)
           2'b00: LoadOut = {24'b0, ReadData[7:0]};
@@ -299,7 +290,13 @@ module load (
           default: LoadOut = 32'bx;
         endcase
       end
-
+      4'b0001: begin // lh (load half-word) with sign extension
+        case (Address[1])
+          1'b0: LoadOut = {{16{ReadData[15]}}, ReadData[15:0]};
+          1'b1: LoadOut = {{16{ReadData[31]}}, ReadData[31:16]};
+          default: LoadOut = 32'bx;
+        endcase
+      end
       4'b0101: begin // lhu (load half-word unsigned)
         case (Address[1])
           1'b0: LoadOut = {16'b0, ReadData[15:0]};
@@ -307,7 +304,7 @@ module load (
           default: LoadOut = 32'bx;
         endcase
       end
-
+      4'b0010: LoadOut = ReadData; // lw (load word)    
       default: LoadOut = 32'bx; // Undefined or error state
     endcase
   end
