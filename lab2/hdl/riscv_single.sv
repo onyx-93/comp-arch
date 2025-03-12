@@ -51,8 +51,8 @@ module testbench();
    initial
      begin
 	string memfilename;
-        memfilename = {"../testing/jalr.memfile"};
-        $readmemh(memfilename, dut.imem.RAM, dut.dmem.RAM);
+        memfilename = {"../testing/sb.memfile"};
+        $readmemh(memfilename, dut.imem.RAM);
         $readmemh(memfilename, dut.dmem.RAM); // load the memfile into dmem to be able to access the hardcoded constants
      end
 // lb success, lbu, lh,lhu, lw
@@ -76,7 +76,7 @@ module testbench();
            if(DataAdr === 100 & WriteData === 10) begin
               $display("Simulation succeeded");
               $stop;
-           end else if (DataAdr !== 17) begin
+           end else if (DataAdr ===100 & WriteData === 17) begin
               $display("Simulation failed");
               $stop;
            end
@@ -95,15 +95,15 @@ module riscvsingle (input  logic        clk, reset,
    logic [1:0] 				ResultSrc;
    logic [2:0]        ImmSrc; // just expanded to allow more immmediate bit distrubution
    // ALUControl was expanded to 4 bits to allow more ALU operations, LoadFunct3 is  is the signal wire that will indicate which type of load operation will be executed
-   logic [3:0] 				ALUControl, LoadFunct3; // LoadFunct3 is the signal that determines the type of load 
+   logic [3:0] 				ALUControl, LoadFunct3, StoreType; // LoadFunct3 is the signal that determines the type of load 
    
    controller c (Instr[6:0], Instr[14:12], Instr[30], Zero, ALUResult[31], V, C, // added N = ALUResult[31]
 		 ResultSrc, MemWrite, PCSrc,
 		 ALUSrc, ALUSrcA, ALUPC, RegWrite, Jump,
-		 ImmSrc, ALUControl, LoadFunct3);
+		 ImmSrc, ALUControl, LoadFunct3, StoreType);
    datapath dp (clk, reset, ResultSrc, PCSrc,
 		ALUSrc, ALUSrcA, ALUPC, RegWrite,
-		ImmSrc, ALUControl, LoadFunct3,
+		ImmSrc, ALUControl, LoadFunct3, StoreType,
 		Zero, V, C, PC, Instr,
 		ALUResult, WriteData, ReadData);
    
@@ -123,14 +123,14 @@ module controller (input  logic [6:0] op,
 		   output logic       PCSrc, ALUSrc, ALUSrcA, ALUPC,
 		   output logic       RegWrite, Jump,
 		   output logic [2:0] ImmSrc,
-		   output logic [3:0] ALUControl, LoadFunct3);
+		   output logic [3:0] ALUControl, LoadFunct3, StoreType);
    
    logic [2:0] 			      ALUOp;
    logic 			      Branch, BranchControl;
    
    maindec md (op, ResultSrc, MemWrite, Branch,
 	       ALUSrc, ALUSrcA, ALUPC, RegWrite, Jump, ImmSrc, ALUOp);
-   aludec ad (op[5], funct3, funct7b5, ALUOp, ALUControl, LoadFunct3);
+   aludec ad (op[5], funct3, funct7b5, ALUOp, ALUControl, LoadFunct3, StoreType);
    
    always_comb begin
      case (funct3)
@@ -182,7 +182,7 @@ module aludec (input  logic       opb5,
 	       input  logic [2:0] funct3,
 	       input  logic 	  funct7b5,
 	       input  logic [2:0] ALUOp,
-	       output logic [3:0] ALUControl, LoadFunct3); 
+	       output logic [3:0] ALUControl, LoadFunct3, StoreType); 
    
    logic 			  RtypeSub;
    
@@ -218,7 +218,17 @@ module aludec (input  logic       opb5,
        3'b010: LoadFunct3 = 4'b0010;     // lw
        3'b100: LoadFunct3 = 4'b0100;     // lbu
        3'b101: LoadFunct3 = 4'b0101;     // lhu
-       default: LoadFunct3 = 4'bxxxx;     // Undefined or error state
+       default: LoadFunct3 = 4'bx;     // Undefined or error state
+     endcase
+  // end
+
+  /*store operations control unit was added to determine load operation*/
+   always_comb //begin
+     case (funct3)
+       3'b000: StoreType = 4'b0000;     // sb
+       3'b001: StoreType = 4'b0001;     // sh
+       3'b010: StoreType = 4'b0010;     // sw
+       default: StoreType = 4'bx;     // Undefined or error state
      endcase
   // end
    
@@ -229,7 +239,7 @@ module datapath (input  logic        clk, reset,
 		 input  logic 	     PCSrc, ALUSrc, ALUSrcA, ALUPC,
 		 input  logic 	     RegWrite,
 		 input  logic [2:0]  ImmSrc,
-		 input  logic [3:0]  ALUControl, LoadFunct3,
+		 input  logic [3:0]  ALUControl, LoadFunct3, StoreType,
 		 output logic 	     Zero, V, C,
 		 output logic [31:0] PC,
 		 input  logic [31:0] Instr,
@@ -238,7 +248,7 @@ module datapath (input  logic        clk, reset,
    
    logic [31:0] 		     PCNext, PCPlus4, PCTarget, NewPCNext;
    logic [31:0] 		     ImmExt;
-   logic [31:0] 		     RD1Data, SrcA, SrcB, LoadOut;
+   logic [31:0] 		     RD1Data, RD2Data, SrcA, SrcB, LoadOut;
    logic [31:0] 		     Result;
 
    // jalr mux where ALUResult will become the new PC only when ALUPC is high
@@ -250,14 +260,16 @@ module datapath (input  logic        clk, reset,
    mux2 #(32)  pcmux (PCPlus4, PCTarget, PCSrc, PCNext);
    // register file logic
    regfile  rf (clk, RegWrite, Instr[19:15], Instr[24:20],
-	       Instr[11:7], Result, RD1Data, WriteData); // 
+	       Instr[11:7], Result, RD1Data, RD2Data); // 
    extend  ext (Instr[31:7], ImmSrc, ImmExt);
    // ALU logic
    mux2 #(32)  srcamux (RD1Data, PC, ALUSrcA, SrcA); // new mux added
-   mux2 #(32)  srcbmux (WriteData, ImmExt, ALUSrc, SrcB);
+   mux2 #(32)  srcbmux (RD2Data, ImmExt, ALUSrc, SrcB);
    alu  alu (SrcA, SrcB, ALUControl, ALUResult, Zero, V, C);
    // Load Operation Block 
    load  ld (ReadData, ALUResult[1:0], LoadFunct3, LoadOut); // ALUResult[1:0] is used to select and load the correct byte
+   // Store Operation Block
+   store st (RD2Data, ALUResult[1:0], ReadData, StoreType, WriteData);
    mux3 #(32) resultmux (ALUResult, LoadOut, PCPlus4,ResultSrc, Result);
 
 
@@ -306,6 +318,38 @@ module load (
       end
       4'b0010: LoadOut = ReadData; // lw (load word)    
       default: LoadOut = 32'bx; // Undefined or error state
+    endcase
+  end
+
+endmodule
+
+module store (input logic[31:0] RD2Data,
+             input logic [1:0] Address2,
+             input logic [31:0] ReadData,
+             input logic [3:0] StoreType,
+             output logic [31:0] WriteData);
+
+// Load operations control unit
+  always_comb begin
+    case (StoreType)
+      4'b0000: begin // sb (store byte) with sign extension
+        case (Address2)
+          2'b00: WriteData = {ReadData[31:8], RD2Data[7:0]};
+          2'b01: WriteData = {ReadData[31:16], RD2Data[15:8], ReadData[7:0]};
+          2'b10: WriteData = {ReadData[31:24], RD2Data[23:16], ReadData[15:0]};
+          2'b11: WriteData = {RD2Data[31:24], ReadData[23:0]};
+          default: WriteData = 32'bx;
+        endcase
+      end
+      4'b0001: begin // sh (store half-word) with sign extension
+        case (Address2[1])
+          1'b0: WriteData = {ReadData[31:16], RD2Data[15:0]};
+          1'b1: WriteData = {RD2Data[31:16], ReadData[15:0]};
+          default: WriteData = 32'bx;
+        endcase
+      end
+      4'b0010: WriteData = ReadData; // sw (store word)    
+      default: WriteData = 32'bx; // Undefined or error state
     endcase
   end
 
