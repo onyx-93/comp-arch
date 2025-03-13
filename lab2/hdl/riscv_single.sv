@@ -164,8 +164,8 @@ module maindec (input  logic [6:0] op,
    always_comb
      case(op)
        // RegWrite_ImmSrc_ALUSrc_MemWrite_ResultSrc_Branch_ALUOp_Jump_ALUSrcA_ALUPC
-       7'b0000011: controls = 15'b1_000_1_0_01_0_000_0_0_0; // lw
-       7'b0100011: controls = 15'b0_001_1_1_00_0_000_0_0_0; // sw
+       7'b0000011: controls = 15'b1_000_1_0_01_0_000_0_0_0; // load
+       7'b0100011: controls = 15'b0_001_1_1_00_0_000_0_0_0; // store
        7'b0110011: controls = 15'b1_xxx_0_0_00_0_010_0_0_0; // R–type
        7'b1100011: controls = 15'b0_010_0_0_00_1_001_0_0_0; // B- type
        7'b0010011: controls = 15'b1_000_1_0_00_0_010_0_0_0; // I–type ALU
@@ -269,7 +269,7 @@ module datapath (input  logic        clk, reset,
    // Load Operation Block 
    load  ld (ReadData, ALUResult[1:0], LoadFunct3, LoadOut); // ALUResult[1:0] is used to select and load the correct byte
    // Store Operation Block
-   store st (RD2Data, ALUResult[1:0], ReadData, StoreType, WriteData);
+   store st (RD2Data, ReadData, ALUResult[1:0], StoreType, WriteData);
    mux3 #(32) resultmux (ALUResult, LoadOut, PCPlus4,ResultSrc, Result);
 
 
@@ -323,32 +323,30 @@ module load (
 
 endmodule
 
-module store (input logic[31:0] RD2Data,
-             input logic [1:0] Address2,
-             input logic [31:0] ReadData,
-             input logic [3:0] StoreType,
-             output logic [31:0] WriteData);
+module store (input logic[31:0] RD2Data, ReadData,
+              input logic [1:0] Address2,
+              input logic [3:0] StoreType,
+              output logic [31:0] WriteData);
 
 // Load operations control unit
   always_comb begin
     case (StoreType)
-      4'b0000: begin // sb (store byte) with sign extension
+      4'b0000: begin // sb (store byte)
         case (Address2)
-          2'b00: WriteData = {ReadData[31:8], RD2Data[7:0]};
-          2'b01: WriteData = {ReadData[31:16], RD2Data[15:8], ReadData[7:0]};
-          2'b10: WriteData = {ReadData[31:24], RD2Data[23:16], ReadData[15:0]};
-          2'b11: WriteData = {RD2Data[31:24], ReadData[23:0]};
-          default: WriteData = 32'bx;
+          2'b00: WriteData = {ReadData[31:8], RD2Data[7:0]};                                  
+          2'b01: WriteData = {ReadData[31:16], RD2Data[7:0], ReadData[7:0]};    
+          2'b10: WriteData = {ReadData[31:24], RD2Data[7:0], ReadData[15:0]};                     
+          2'b11: WriteData = {RD2Data[7:0], ReadData[23:0]};  
         endcase
       end
-      4'b0001: begin // sh (store half-word) with sign extension
+      4'b0001: begin // sh (store half-word)
         case (Address2[1])
           1'b0: WriteData = {ReadData[31:16], RD2Data[15:0]};
-          1'b1: WriteData = {RD2Data[31:16], ReadData[15:0]};
+          1'b1: WriteData = {RD2Data[15:0], ReadData[15:0]};
           default: WriteData = 32'bx;
         endcase
       end
-      4'b0010: WriteData = ReadData; // sw (store word)    
+      4'b0010: WriteData = RD2Data; // sw (store word)    
       default: WriteData = 32'bx; // Undefined or error state
     endcase
   end
@@ -442,7 +440,7 @@ endmodule // top
 module imem (input  logic [31:0] a,
 	     output logic [31:0] rd);
    
-   logic [31:0] 		 RAM[1029:0]; // RAM was expanded to allow all the instructions found in the testing directory
+   logic [31:0] 		 RAM[1035:0]; // RAM was expanded to allow all the instructions found in the testing directory
    
    assign rd = RAM[a[31:2]]; // word aligned
    
@@ -452,7 +450,7 @@ module dmem (input  logic        clk, we,
 	     input  logic [31:0] a, wd,
 	     output logic [31:0] rd);
    
-   logic [31:0] 		 RAM[1029:0];
+   logic [31:0] 		 RAM[1035:0];
    
    assign rd = RAM[a[31:2]]; // word aligned
    always_ff @(posedge clk)
@@ -515,28 +513,4 @@ module regfile (input logic         clk,
    assign rd1 = (rs1 == 5'b00000) ? 32'b0 : rf[rs1]; // If ra1 == 0, return 32'b0 (Register 0 always reads as zero). Otherwise, return the value stored in rf[ra1].
    assign rd2 = (rs2 == 5'b00000) ? 32'b0 : rf[rs2]; // If ra2 == 0, return 32'b0 (Register 0 always reads as zero). Otherwise, return the value stored in rf[ra2].
    
-   
 endmodule // regfile
-
-/* default regfile module
-
-module regfile (input  logic        clk, 
-		input  logic 	    we3, 
-		input  logic [4:0]  a1, a2, a3, 
-		input  logic [31:0] wd3, 
-		output logic [31:0] rd1, rd2);
-
-   logic [31:0] 		    rf[31:0];
-
-   // three ported register file
-   // read two ports combinationally (A1/RD1, A2/RD2)
-   // write third port on rising edge of clock (A3/WD3/WE3)
-   // register 0 hardwired to 0
-
-   always_ff @(posedge clk)
-     if (we3) rf[a3] <= wd3;	
-
-   assign rd1 = (a1 != 0) ? rf[a1] : 0;
-   assign rd2 = (a2 != 0) ? rf[a2] : 0;
-   
-endmodule // regfile      */
