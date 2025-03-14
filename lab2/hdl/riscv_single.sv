@@ -51,7 +51,7 @@ module testbench();
    initial
      begin
 	string memfilename;
-        memfilename = {"../testing/sb.memfile"};
+        memfilename = {"../testing/xori.memfile"};
         $readmemh(memfilename, dut.imem.RAM);
         $readmemh(memfilename, dut.dmem.RAM); // load the memfile into dmem to be able to access the hardcoded constants
      end

@@ -1,6 +1,6 @@
 # do riscv_single.do
 # Model Technology ModelSim SE-64 vlog 2021.3 Compiler 2021.07 Jul 13 2021
-# Start time: 20:49:04 on Mar 12,2025
+# Start time: 21:08:04 on Mar 13,2025
 # vlog riscv_single.sv 
 # -- Compiling module testbench
 # -- Compiling module riscvsingle
@@ -25,10 +25,10 @@
 # Top level modules:
 # 	testbench
 # 	flopenr
-# End time: 20:49:04 on Mar 12,2025, Elapsed time: 0:00:00
+# End time: 21:08:04 on Mar 13,2025, Elapsed time: 0:00:00
 # Errors: 0, Warnings: 0
 # vsim -debugdb -voptargs="+acc" work.testbench 
-# Start time: 20:49:04 on Mar 12,2025
+# Start time: 21:08:04 on Mar 13,2025
 # ** Note: (vsim-3812) Design is being optimized...
 # ** Note: (vsim-8611) Generating debug db.
 # ** Note: (vopt-4301) Memory core inferred for signal 'RAM' width=32, depth=1036, type=RAM at location riscv_single.sv:453
@@ -75,9 +75,9 @@
 # configure wave not supported in batch mode
 # Simulation succeeded
 # ** Note: $stop    : riscv_single.sv(78)
-#    Time: 3875 ns  Iteration: 1  Instance: /testbench
+#    Time: 1685 ns  Iteration: 1  Instance: /testbench
 # Break in Module testbench at riscv_single.sv line 78
 # Stopped at riscv_single.sv line 78
 # add schematic not supported in batch mode
-# End time: 20:49:35 on Mar 12,2025, Elapsed time: 0:00:31
+# End time: 21:08:14 on Mar 13,2025, Elapsed time: 0:00:10
 # Errors: 0, Warnings: 0
