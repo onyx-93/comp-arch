@@ -1,0 +1,28 @@
+Fri Mar 14 16:06:48 CDT 2025
+Trace back: invalid command name ""
+    while executing
+"$this component $tree"
+    (method "::vsimwidgets::VTree::activate" body line 6)
+    invoked from within
+"activate"
+    (method "::WaveTree::Activate" body line 12)
+    invoked from within
+".main_pane.wave.interior.cs.body.pw.wf.tree Activate .main_pane.wave"
+    (in namespace inscope "::Wave" script line 1)
+    invoked from within
+"namespace inscope ::Wave {.main_pane.wave.interior.cs.body.pw.wf.tree Activate} .main_pane.wave"
+    ("eval" body line 1)
+    invoked from within
+"eval $itk_option(-activatecommand) $frame_name"
+    (object "::.main_pane.wave" method "::mtiwidgets::WindowObj::Activate" body line 16)
+    invoked from within
+"$windowobj Activate """
+    (object "::.vcop" method "::vsimwidgets::Vcop::ActualActivate" body line 36)
+    invoked from within
+"::.vcop ActualActivate"
+    (in namespace inscope "::vsimwidgets::Vcop" script line 1)
+    invoked from within
+"namespace inscope ::vsimwidgets::Vcop {::.vcop ActualActivate}"
+    ("after" script)
+  <2:C:/modeltech64_2021.3/win64/tk8.6/bgerror.tcl:106: ::tkerror {invalid command name ""}
+  <1:C:/mtitcl/vsim/vsiminit.tc_:523: ::tk::dialog::error::bgerror {invalid command name ""}
