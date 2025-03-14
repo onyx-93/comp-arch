@@ -26,15 +26,7 @@
 //   sw           0100011   010       immediate
 //   jal          1101111   immediate immediate
 
-/*Implemented Instructions by Daniel Dubon that actually work
-  sll
-  sra
-  srl
-
-*/
-
-
-
+/*
 
 module testbench();
 
@@ -75,21 +67,21 @@ module testbench();
 	if(MemWrite) begin
            if(DataAdr === 100 & WriteData === 10) begin
               $display("Simulation succeeded");
-              $stop;
            end else if (DataAdr ===100 & WriteData === 17) begin
               $display("Simulation failed");
-              $stop;
            end
 	end
      end
-endmodule // testbench
+endmodule // testbench   */
 
 module riscvsingle (input  logic        clk, reset,
 		    output logic [31:0] PC,
 		    input  logic [31:0] Instr,
 		    output logic 	MemWrite,
 		    output logic [31:0] ALUResult, WriteData,
-		    input  logic [31:0] ReadData);
+		    input  logic [31:0] ReadData,
+        output logic MemStrobe,
+        input  logic PCReady);
    
    logic 				ALUSrc,ALUSrcA, ALUPC, RegWrite, Jump, Zero, V, C;  //ALUsrcA mux added between regfile and ALU
    logic [1:0] 				ResultSrc;
@@ -100,12 +92,12 @@ module riscvsingle (input  logic        clk, reset,
    controller c (Instr[6:0], Instr[14:12], Instr[30], Zero, ALUResult[31], V, C, // added N = ALUResult[31]
 		 ResultSrc, MemWrite, PCSrc,
 		 ALUSrc, ALUSrcA, ALUPC, RegWrite, Jump,
-		 ImmSrc, ALUControl, LoadFunct3, StoreType);
+		 ImmSrc, ALUControl, LoadFunct3, StoreType, MemStrobe);
    datapath dp (clk, reset, ResultSrc, PCSrc,
 		ALUSrc, ALUSrcA, ALUPC, RegWrite,
 		ImmSrc, ALUControl, LoadFunct3, StoreType,
 		Zero, V, C, PC, Instr,
-		ALUResult, WriteData, ReadData);
+		ALUResult, WriteData, ReadData, PCReady);
    
 endmodule // riscvsingle
 
@@ -123,13 +115,14 @@ module controller (input  logic [6:0] op,
 		   output logic       PCSrc, ALUSrc, ALUSrcA, ALUPC,
 		   output logic       RegWrite, Jump,
 		   output logic [2:0] ImmSrc,
-		   output logic [3:0] ALUControl, LoadFunct3, StoreType);
+		   output logic [3:0] ALUControl, LoadFunct3, StoreType,
+       output logic MemStrobe);
    
    logic [2:0] 			      ALUOp;
    logic 			      Branch, BranchControl;
    
    maindec md (op, ResultSrc, MemWrite, Branch,
-	       ALUSrc, ALUSrcA, ALUPC, RegWrite, Jump, ImmSrc, ALUOp);
+	       ALUSrc, ALUSrcA, ALUPC, RegWrite, Jump, ImmSrc, ALUOp, MemStrobe);
    aludec ad (op[5], funct3, funct7b5, ALUOp, ALUControl, LoadFunct3, StoreType);
    
    always_comb begin
@@ -154,26 +147,27 @@ module maindec (input  logic [6:0] op,
 		output logic 	   Branch, ALUSrc, ALUSrcA, ALUPC, //ALUSrcA signal to indicate mux to choose PC value RD1
 		output logic 	   RegWrite, Jump,
 		output logic [2:0] ImmSrc,
-		output logic [2:0] ALUOp); // ALUOp was expanded to 3 bits to allow more ALU operations
+		output logic [2:0] ALUOp,
+    output logic MemStrobe); // ALUOp was expanded to 3 bits to allow more ALU operations
    
-   logic [14:0] 		   controls;
+   logic [15:0] 		   controls;
    
    assign {RegWrite, ImmSrc, ALUSrc, MemWrite,
-	   ResultSrc, Branch, ALUOp, Jump, ALUSrcA, ALUPC} = controls;
+	   ResultSrc, Branch, ALUOp, Jump, ALUSrcA, ALUPC, MemStrobe} = controls;
    
    always_comb
      case(op)
-       // RegWrite_ImmSrc_ALUSrc_MemWrite_ResultSrc_Branch_ALUOp_Jump_ALUSrcA_ALUPC
-       7'b0000011: controls = 15'b1_000_1_0_01_0_000_0_0_0; // load
-       7'b0100011: controls = 15'b0_001_1_1_00_0_000_0_0_0; // store
-       7'b0110011: controls = 15'b1_xxx_0_0_00_0_010_0_0_0; // R–type
-       7'b1100011: controls = 15'b0_010_0_0_00_1_001_0_0_0; // B- type
-       7'b0010011: controls = 15'b1_000_1_0_00_0_010_0_0_0; // I–type ALU
-       7'b1101111: controls = 15'b1_011_0_0_10_0_000_1_0_0; // jal
-       7'b0110111: controls = 15'b1_100_1_0_00_0_011_0_0_0; // lui
-       7'b0010111: controls = 15'b1_100_1_0_00_0_100_0_1_0; // auipc
-       7'b1100111: controls = 15'b1_000_1_0_10_0_010_0_0_1; // jalr
-       default:    controls = 15'bx_xxx_x_x_xx_x_xxx_x_x_x; // ???
+       // RegWrite_ImmSrc_ALUSrc_MemWrite_ResultSrc_Branch_ALUOp_Jump_ALUSrcA_ALUPC_MemStrobe
+       7'b0000011: controls = 16'b1_000_1_0_01_0_000_0_0_0_1; // load
+       7'b0100011: controls = 16'b0_001_1_1_00_0_000_0_0_0_1; // store
+       7'b0110011: controls = 16'b1_xxx_0_0_00_0_010_0_0_0_0; // R–type
+       7'b1100011: controls = 16'b0_010_0_0_00_1_001_0_0_0_0; // B- type
+       7'b0010011: controls = 16'b1_000_1_0_00_0_010_0_0_0_0; // I–type ALU
+       7'b1101111: controls = 16'b1_011_0_0_10_0_000_1_0_0_0; // jal
+       7'b0110111: controls = 16'b1_100_1_0_00_0_011_0_0_0_0; // lui
+       7'b0010111: controls = 16'b1_100_1_0_00_0_100_0_1_0_0; // auipc
+       7'b1100111: controls = 16'b1_000_1_0_10_0_010_0_0_1_0; // jalr
+       default:    controls = 16'bx_xxx_x_x_xx_x_xxx_x_x_x_x; // ???
      endcase // case (op)
    
 endmodule // maindec
@@ -244,7 +238,8 @@ module datapath (input  logic        clk, reset,
 		 output logic [31:0] PC,
 		 input  logic [31:0] Instr,
 		 output logic [31:0] ALUResult, WriteData,
-		 input  logic [31:0] ReadData);
+		 input  logic [31:0] ReadData,
+     input  logic PCReady);
    
    logic [31:0] 		     PCNext, PCPlus4, PCTarget, NewPCNext;
    logic [31:0] 		     ImmExt;
@@ -254,7 +249,7 @@ module datapath (input  logic        clk, reset,
    // jalr mux where ALUResult will become the new PC only when ALUPC is high
    mux2 #(32)  jalrmux (PCNext, ALUResult, ALUPC, NewPCNext);
    // next PC logic
-   flopr #(32) pcreg (clk, reset, NewPCNext, PC);
+   flopenr #(32) pcreg (clk, reset, PCReady, NewPCNext, PC);
    adder  pcadd4 (PC, 32'd4, PCPlus4);
    adder  pcaddbranch (PC, ImmExt, PCTarget);
    mux2 #(32)  pcmux (PCPlus4, PCTarget, PCSrc, PCNext);
@@ -422,7 +417,7 @@ module mux3 #(parameter WIDTH = 8)
   assign y = s[1] ? d2 : (s[0] ? d1 : d0);
    
 endmodule // mux3
-
+/*
 module top (input  logic        clk, reset,
 	    output logic [31:0] WriteData, DataAdr,
 	    output logic 	MemWrite);
@@ -456,7 +451,7 @@ module dmem (input  logic        clk, we,
    always_ff @(posedge clk)
      if (we) RAM[a[31:2]] <= wd;
    
-endmodule // dmem
+endmodule // dmem  */
 
 module alu (input  logic [31:0] a, b,
             input  logic [3:0] 	alucontrol,
