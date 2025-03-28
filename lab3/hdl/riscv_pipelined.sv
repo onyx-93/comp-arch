@@ -92,7 +92,7 @@ module testbench();
    initial
      begin
 	string memfilename;
-        memfilename = {"../riscvtest/riscvtest.memfile"};
+        memfilename = {"../riscvtest/xor-test.memfile"};
 	$readmemh(memfilename, dut.imem.RAM);
      end
    
@@ -150,7 +150,7 @@ module riscv(input  logic        clk, reset,
    logic [1:0] 			 ImmSrcD;
    logic 			 ZeroE;
    logic 			 PCSrcE;
-   logic [2:0] 			 ALUControlE;
+   logic [3:0] 			 ALUControlE;
    logic 			 ALUSrcE;
    logic 			 ResultSrcEb0;
    logic 			 RegWriteM;
@@ -192,7 +192,7 @@ module controller(input  logic		 clk, reset,
                   input logic 	     FlushE, 
                   input logic 	     ZeroE, 
                   output logic 	     PCSrcE, // for datapath and Hazard Unit
-                  output logic [2:0] ALUControlE, 
+                  output logic [3:0] ALUControlE, 
                   output logic 	     ALUSrcE,
                   output logic 	     ResultSrcEb0, // for Hazard Unit
                   // Memory stage control signals
@@ -208,8 +208,8 @@ module controller(input  logic		 clk, reset,
    logic 			     MemWriteD, MemWriteE;
    logic 			     JumpD, JumpE;
    logic 			     BranchD, BranchE;
-   logic [1:0] 			     ALUOpD;
-   logic [2:0] 			     ALUControlD;
+   logic [2:0] 			     ALUOpD;
+   logic [3:0] 			     ALUControlD;
    logic 			     ALUSrcD;
    
    // Decode stage logic
@@ -218,7 +218,7 @@ module controller(input  logic		 clk, reset,
    aludec  ad(opD[5], funct3D, funct7b5D, ALUOpD, ALUControlD);
    
    // Execute stage pipeline control register and logic
-   floprc #(10) controlregE(clk, reset, FlushE,
+   floprc #(11) controlregE(clk, reset, FlushE,
                             {RegWriteD, ResultSrcD, MemWriteD, JumpD, BranchD, ALUControlD, ALUSrcD},
                             {RegWriteE, ResultSrcE, MemWriteE, JumpE, BranchE, ALUControlE, ALUSrcE});
 
@@ -242,9 +242,9 @@ module maindec(input  logic [6:0] op,
                output logic 	  Branch, ALUSrc,
                output logic 	  RegWrite, Jump,
                output logic [1:0] ImmSrc,
-               output logic [1:0] ALUOp);
+               output logic [2:0] ALUOp);
 
-   logic [10:0] 		  controls;
+   logic [11:0] 		  controls;
 
    assign {RegWrite, ImmSrc, ALUSrc, MemWrite,
            ResultSrc, Branch, ALUOp, Jump} = controls;
@@ -252,39 +252,43 @@ module maindec(input  logic [6:0] op,
    always_comb
      case(op)
        // RegWrite_ImmSrc_ALUSrc_MemWrite_ResultSrc_Branch_ALUOp_Jump
-       7'b0000011: controls = 11'b1_00_1_0_01_0_00_0; // lw
-       7'b0100011: controls = 11'b0_01_1_1_00_0_00_0; // sw
-       7'b0110011: controls = 11'b1_xx_0_0_00_0_10_0; // R-type 
-       7'b1100011: controls = 11'b0_10_0_0_00_1_01_0; // beq
-       7'b0010011: controls = 11'b1_00_1_0_00_0_10_0; // I-type ALU
-       7'b1101111: controls = 11'b1_11_0_0_10_0_00_1; // jal
-       7'b0000000: controls = 11'b0_00_0_0_00_0_00_0; // need valid values at reset
-       default:    controls = 11'bx_xx_x_x_xx_x_xx_x; // non-implemented instruction
+       7'b0000011: controls = 12'b1_00_1_0_01_0_000_0; // lw
+       7'b0100011: controls = 12'b0_01_1_1_00_0_000_0; // sw
+       7'b0110011: controls = 12'b1_xx_0_0_00_0_010_0; // R-type 
+       7'b1100011: controls = 12'b0_10_0_0_00_1_001_0; // beq
+       7'b0010011: controls = 12'b1_00_1_0_00_0_010_0; // I-type ALU
+       7'b1101111: controls = 12'b1_11_0_0_10_0_000_1; // jal
+       7'b0000000: controls = 12'b0_00_0_0_00_0_000_0; // need valid values at reset
+       default:    controls = 12'bx_xx_x_x_xx_x_xxx_x; // non-implemented instruction
      endcase
 endmodule
 
 module aludec(input  logic       opb5,
               input logic [2:0]  funct3,
               input logic 	 funct7b5, 
-              input logic [1:0]  ALUOp,
-              output logic [2:0] ALUControl);
+              input logic [2:0]  ALUOp,
+              output logic [3:0] ALUControl);
 
    logic 			 RtypeSub;
    assign RtypeSub = funct7b5 & opb5;  // TRUE for R-type subtract instruction
 
    always_comb
      case(ALUOp)
-       2'b00:                ALUControl = 3'b000; // addition
-       2'b01:                ALUControl = 3'b001; // subtraction
+       3'b000:                ALUControl = 4'b0000; // addition
+       3'b001:                ALUControl = 4'b0001; // subtraction
        default: case(funct3) // R-type or I-type ALU
                   3'b000:  if (RtypeSub) 
-                    ALUControl = 3'b001; // sub
+                    ALUControl = 4'b0001; // sub
                   else          
-                    ALUControl = 3'b000; // add, addi
-                  3'b010:    ALUControl = 3'b101; // slt, slti
-                  3'b110:    ALUControl = 3'b011; // or, ori
-                  3'b111:    ALUControl = 3'b010; // and, andi
-                  default:   ALUControl = 3'bxxx; // ???
+                    ALUControl = 4'b0000; // add, addi
+		                3'b010: ALUControl = 4'b0101; // slt, slti
+                    3'b011: ALUControl = 4'b0110; // sltu (just implemented)	 it worked
+		                3'b110: ALUControl = 4'b0011; // or, ori
+		                3'b111: ALUControl = 4'b0010; // and, andi
+		                3'b100: ALUControl = 4'b0100; // xor, xori	
+                    3'b001: ALUControl = 4'b0111; // sll, slli (just implemented)	 it worked! 
+                    3'b101: ALUControl = funct7b5 ? 4'b1001 : 4'b1000; // sra,srai if funct7b5=1, else srl,srli
+                  default:   ALUControl = 4'bxxxx; // ???
 		endcase
      endcase
 endmodule
@@ -304,7 +308,7 @@ module datapath(input logic clk, reset,
                 input logic 	    FlushE,
                 input logic [1:0]   ForwardAE, ForwardBE,
                 input logic 	    PCSrcE,
-                input logic [2:0]   ALUControlE,
+                input logic [3:0]   ALUControlE,
                 input logic 	    ALUSrcE,
                 output logic 	    ZeroE,
                 // Memory stage signals
@@ -414,26 +418,21 @@ module hazard(input  logic [4:0] Rs1D, Rs2D, Rs1E, Rs2E, RdE, RdM, RdW,
    assign FlushE = lwStallD | PCSrcE;
 endmodule
 
-module regfile(input  logic        clk, 
-               input logic 	   we3, 
-               input logic [ 4:0]  a1, a2, a3, 
-               input logic [31:0]  wd3, 
-               output logic [31:0] rd1, rd2);
+module regfile (input logic         clk, 
+		input logic 	    we3, // RegWrite
+		input logic [4:0]   rs1, rs2, rd, // rs1 (register src1); rs2 (register src2); rd (destination register)
+		input logic [31:0]  wd3, // actual data written in register file
+		output logic [31:0] rd1, rd2); // rd1 reads rs1 = SrcA; rd2 reads rs2 = SrcB only for R-type operations (when ALUSrc is low)
+   
+   logic [31:0] 		    rf[31:0];
+   
+   always_ff @(posedge clk) // This block runs on the rising edge of clk, meaning it updates the registers synchronously.
+      if (we3 && rd!=0) rf[rd] <= wd3; // If write enable we3 is high, the register at address wa3 is updated with wd3. If we3 is low, no write occurs.
 
-   logic [31:0] 		   rf[31:0];
-
-   // three ported register file
-   // read two ports combinationally (A1/RD1, A2/RD2)
-   // write third port on rising edge of clock (A3/WD3/WE3)
-   // write occurs on falling edge of clock
-   // register 0 hardwired to 0
-
-   always_ff @(negedge clk)
-     if (we3) rf[a3] <= wd3;	
-
-   assign rd1 = (a1 != 0) ? rf[a1] : 0;
-   assign rd2 = (a2 != 0) ? rf[a2] : 0;
-endmodule
+   assign rd1 = (rs1 == 5'b00000) ? 32'b0 : rf[rs1]; // If ra1 == 0, return 32'b0 (Register 0 always reads as zero). Otherwise, return the value stored in rf[ra1].
+   assign rd2 = (rs2 == 5'b00000) ? 32'b0 : rf[rs2]; // If ra2 == 0, return 32'b0 (Register 0 always reads as zero). Otherwise, return the value stored in rf[ra2].
+   
+endmodule // regfile
 
 module adder(input  [31:0] a, b,
              output [31:0] y);
@@ -543,7 +542,7 @@ module dmem (input  logic        clk, we,
 endmodule // dmem
 
 module alu(input  logic [31:0] a, b,
-           input logic [2:0]   alucontrol,
+           input logic [3:0]   alucontrol,
            output logic [31:0] result,
            output logic        zero);
 
@@ -558,14 +557,16 @@ module alu(input  logic [31:0] a, b,
 
    always_comb
      case (alucontrol)
-       3'b000:  result = sum;         // add
-       3'b001:  result = sum;         // subtract
-       3'b010:  result = a & b;       // and
-       3'b011:  result = a | b;       // or
-       3'b100:  result = a ^ b;       // xor
-       3'b101:  result = sum[31] ^ v; // slt
-       3'b110:  result = a << b[4:0]; // sll
-       3'b111:  result = a >> b[4:0]; // srl
+       4'b0000:  result = sum;         // add*
+       4'b0001:  result = sum;         // sub*
+       4'b0010:  result = a & b;       // and*
+       4'b0011:  result = a | b;       // or*
+       4'b0101:  result = sum[31] ^ v; // slt * 
+       4'b0110:  result = a < b;       //sltu and sltiu*    
+       4'b0100:  result = a ^ b;       // xor*
+       4'b0111:  result = a << b[4:0]; //sll worked!*
+       4'b1000:  result = a >> b[4:0]; //srl worked!*
+       4'b1001:  result = $signed(a) >>> b[4:0]; //sra worked!*
        default: result = 32'bx;
      endcase
 
