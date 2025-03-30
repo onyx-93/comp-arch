@@ -15,7 +15,7 @@ __start:
     xor t1, a1, t0       # t1 = a1 ^ t0 = 0x00000010 ^ 0x00000002 = 0x00000012
     addi t2, t1, 10      # t2 = t1 + 10 = 0x00000012 + 0x00000010 = 0x0000001C
     srl t6, t2, a1       # t6 = t2 >> a1 = 0x0000001C >> 0x00000010 = 0x00000000
-    addi a0, t0, 0x7F8   # a0 = 0x00000002 + 0x000007F8 = 0x000007FA
-    sra t3, a0, t0       # t3 = a0 >>> t0 = 0x7FA >> 2 = 0x000001FE
+    addi a0, t0, -0x7F8   # a0 = 0x00000002 + (-0x000007F8) = 0xFFFF_F80A
+    sra t3, a0, t0       # t3 = a0 >>> t0 = 0x7FA >> 2 = 0xFFFF_FE02
 stop:
     j stop
