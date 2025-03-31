@@ -147,7 +147,7 @@ module riscv(input  logic        clk, reset,
    logic [6:0] 			 opD;
    logic [2:0] 			 funct3D;
    logic 			 funct7b5D;
-   logic [1:0] 			 ImmSrcD;
+   logic [2:0] 			 ImmSrcD;
    logic 			 ZeroE;
    logic 			 PCSrcE;
    logic [3:0] 			 ALUControlE;
@@ -187,7 +187,7 @@ module controller(input  logic		 clk, reset,
                   input logic [6:0]  opD,
                   input logic [2:0]  funct3D,
                   input logic 	     funct7b5D,
-                  output logic [1:0] ImmSrcD,
+                  output logic [2:0] ImmSrcD,
                   // Execute stage control signals
                   input logic 	     FlushE, 
                   input logic 	     ZeroE, 
@@ -241,25 +241,28 @@ module maindec(input  logic [6:0] op,
                output logic 	  MemWrite,
                output logic 	  Branch, ALUSrc,
                output logic 	  RegWrite, Jump,
-               output logic [1:0] ImmSrc,
+               output logic [2:0] ImmSrc,
                output logic [2:0] ALUOp);
 
-   logic [11:0] 		  controls;
+   logic [12:0] 		  controls;
 
    assign {RegWrite, ImmSrc, ALUSrc, MemWrite,
            ResultSrc, Branch, ALUOp, Jump} = controls;
-
+    /* control implemented in lab2:
+    //  7'b0110111: controls = 16'b1_100_1_0_00_0_011_0_0_0_0; // lui
+    */
    always_comb
      case(op)
-       // RegWrite_ImmSrc_ALUSrc_MemWrite_ResultSrc_Branch_ALUOp_Jump
-       7'b0000011: controls = 12'b1_00_1_0_01_0_000_0; // lw
-       7'b0100011: controls = 12'b0_01_1_1_00_0_000_0; // sw
-       7'b0110011: controls = 12'b1_xx_0_0_00_0_010_0; // R-type 
-       7'b1100011: controls = 12'b0_10_0_0_00_1_001_0; // beq
-       7'b0010011: controls = 12'b1_00_1_0_00_0_010_0; // I-type ALU
-       7'b1101111: controls = 12'b1_11_0_0_10_0_000_1; // jal
-       7'b0000000: controls = 12'b0_00_0_0_00_0_000_0; // need valid values at reset
-       default:    controls = 12'bx_xx_x_x_xx_x_xxx_x; // non-implemented instruction
+       // RegWrite_ImmSrc_ALUSrcB_MemWrite_ResultSrc_Branch_ALUOp_Jump
+       7'b0000011: controls = 13'b1_000_1_0_01_0_000_0; // lw
+       7'b0100011: controls = 13'b0_001_1_1_00_0_000_0; // sw
+       7'b0110011: controls = 13'b1_xxx_0_0_00_0_010_0; // R-type 
+       7'b1100011: controls = 13'b0_010_0_0_00_1_001_0; // beq
+       7'b0010011: controls = 13'b1_000_1_0_00_0_010_0; // I-type ALU
+       7'b1101111: controls = 13'b1_011_0_0_10_0_000_1; // jal
+       7'b0110111: controls = 16'b1_100_1_0_00_0_011_0; // lui
+       7'b0000000: controls = 13'b0_000_0_0_00_0_000_0; // need valid values at reset
+       default:    controls = 13'bx_xxx_x_x_xx_x_xxx_x; // non-implemented instruction
      endcase
 endmodule
 
@@ -274,8 +277,9 @@ module aludec(input  logic       opb5,
 
    always_comb
      case(ALUOp)
-       3'b000:                ALUControl = 4'b0000; // addition
-       3'b001:                ALUControl = 4'b0001; // subtraction
+       3'b000: ALUControl = 4'b0000; // addition
+       3'b001: ALUControl = 4'b0001; // subtraction
+       3'b011: ALUControl = 4'b1111; // lui
        default: case(funct3) // R-type or I-type ALU
                   3'b000:  if (RtypeSub) 
                     ALUControl = 4'b0001; // sub
@@ -303,7 +307,7 @@ module datapath(input logic clk, reset,
                 output logic [2:0]  funct3D, 
                 output logic 	    funct7b5D,
                 input logic 	    StallD, FlushD,
-                input logic [1:0]   ImmSrcD,
+                input logic [2:0]   ImmSrcD,
                 // Execute stage signals
                 input logic 	    FlushE,
                 input logic [1:0]   ForwardAE, ForwardBE,
@@ -446,19 +450,21 @@ module adder(input  [31:0] a, b,
 endmodule
 
 module extend(input  logic [31:7] instr,
-              input logic [1:0]   immsrc,
+              input logic [2:0]   immsrc,
               output logic [31:0] immext);
    
    always_comb
      case(immsrc) 
        // I-type 
-       2'b00:   immext = {{20{instr[31]}}, instr[31:20]};  
+       3'b000:   immext = {{20{instr[31]}}, instr[31:20]};  
        // S-type (stores)
-       2'b01:   immext = {{20{instr[31]}}, instr[31:25], instr[11:7]}; 
+       3'b001:   immext = {{20{instr[31]}}, instr[31:25], instr[11:7]}; 
        // B-type (branches)
-       2'b10:   immext = {{20{instr[31]}}, instr[7], instr[30:25], instr[11:8], 1'b0}; 
+       3'b010:   immext = {{20{instr[31]}}, instr[7], instr[30:25], instr[11:8], 1'b0}; 
        // J-type (jal)
-       2'b11:   immext = {{12{instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b0}; 
+       3'b011:   immext = {{12{instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b0}; 
+       // U-type
+       3'b100:  immext = {instr[31:12], 12'b0};
        default: immext = 32'bx; // undefined
      endcase             
 endmodule
@@ -572,6 +578,7 @@ module alu(input  logic [31:0] a, b,
        4'b0111:  result = a << b[4:0]; //sll worked!*
        4'b1000:  result = a >> b[4:0]; //srl 
        4'b1001:  result = $signed(a) >>> b[4:0]; //sra worked!*
+       4'b1111:  result = b;           // lui
        default: result = 32'bx;
      endcase
 
