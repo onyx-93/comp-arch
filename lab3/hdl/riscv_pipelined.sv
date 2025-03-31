@@ -78,9 +78,6 @@
 //   sw           0100011   010       immediate
 //   jal          1101111   immediate immediate
 
-/*
-Comment testing Ricardo Landeros added
-*/
 
 module testbench();
 
