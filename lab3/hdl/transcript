@@ -13,7 +13,7 @@
 # //
 # do riscv_pipelined.do
 # Model Technology ModelSim SE-64 vlog 2021.3 Compiler 2021.07 Jul 13 2021
-# Start time: 20:11:27 on Mar 30,2025
+# Start time: 22:38:06 on Mar 30,2025
 # vlog -reportprogress 300 riscv_pipelined.sv 
 # -- Compiling module testbench
 # -- Compiling module top
@@ -38,13 +38,13 @@
 # 
 # Top level modules:
 # 	testbench
-# End time: 20:11:27 on Mar 30,2025, Elapsed time: 0:00:00
+# End time: 22:38:06 on Mar 30,2025, Elapsed time: 0:00:00
 # Errors: 0, Warnings: 0
 # vsim -debugdb -voptargs="+acc" work.testbench 
-# Start time: 20:11:27 on Mar 30,2025
+# Start time: 22:38:06 on Mar 30,2025
 # ** Note: (vsim-3812) Design is being optimized...
 # ** Note: (vsim-8611) Generating debug db.
-# ** Note: (vopt-4301) Memory core inferred for signal 'RAM' width=32, depth=256, type=RAM at location riscv_pipelined.sv:537
+# ** Note: (vopt-4301) Memory core inferred for signal 'RAM' width=32, depth=256, type=RAM at location riscv_pipelined.sv:536
 # Loading sv_std.std
 # Loading work.testbench(fast)
 # Loading work.top(fast)
@@ -69,6 +69,10 @@
 # Loading work.hazard(fast)
 # Loading work.imem(fast)
 # Loading work.dmem(fast)
+# ** Warning: (vsim-3015) [PCDPC] - Port size (176) does not match connection size (175) for port 'd'. The port definition is at: riscv_pipelined.sv(497).
+#    Time: 0 ns  Iteration: 0  Instance: /testbench/dut/rv32pipe/dp/regE File: riscv_pipelined.sv Line: 369
+# ** Warning: (vsim-3015) [PCDPC] - Port size (176) does not match connection size (175) for port 'q'. The port definition is at: riscv_pipelined.sv(498).
+#    Time: 0 ns  Iteration: 0  Instance: /testbench/dut/rv32pipe/dp/regE File: riscv_pipelined.sv Line: 369
 # ** Note: (vsim-8900) Creating design debug database vsim.dbg.
-# End time: 20:21:15 on Mar 30,2025, Elapsed time: 0:09:48
-# Errors: 0, Warnings: 0
+# End time: 22:41:43 on Mar 30,2025, Elapsed time: 0:03:37
+# Errors: 0, Warnings: 2

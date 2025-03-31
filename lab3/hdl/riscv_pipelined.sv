@@ -287,8 +287,7 @@ module aludec(input  logic       opb5,
 		                3'b111: ALUControl = 4'b0010; // and, andi
 		                3'b100: ALUControl = 4'b0100; // xor, xori	
                     3'b001: ALUControl = 4'b0111; // sll, slli (just implemented)	 it worked! 
-                    3'b101: ALUControl = 4'b1000; //  srl,srli
-                    // 3'b101: ALUControl = funct7b5 ? 4'b1001 : 4'b1000; // sra,srai if funct7b5=1, else srl,srli
+                    3'b101: ALUControl = funct7b5 ? 4'b1001 : 4'b1000; // sra,srai if funct7b5 = 1, else srl,srli
                   default:   ALUControl = 4'bxxxx; // ???
 		endcase
      endcase
@@ -558,15 +557,15 @@ module alu(input  logic [31:0] a, b,
 
    always_comb
      case (alucontrol)
-       4'b0000:  result = sum;         // add*
-       4'b0001:  result = sum;         // sub*
-       4'b0010:  result = a & b;       // and*
-       4'b0011:  result = a | b;       // or*
-       4'b0101:  result = sum[31] ^ v; // slt * 
-       4'b0110:  result = a < b;       //sltu and sltiu*    
-       4'b0100:  result = a ^ b;       // xor*
+       4'b0000:  result = sum;         // add worked*
+       4'b0001:  result = sum;         // sub worked*
+       4'b0010:  result = a & b;       // and worked*
+       4'b0011:  result = a | b;       // or worked*
+       4'b0101:  result = sum[31] ^ v; // slt worked* 
+       4'b0110:  result = a < b;       //sltu and sltiu worked*    
+       4'b0100:  result = a ^ b;       // xor worked*
        4'b0111:  result = a << b[4:0]; //sll worked!*
-       4'b1000:  result = a >> b[4:0]; //srl worked!*
+       4'b1000:  result = a >> b[4:0]; //srl 
        4'b1001:  result = $signed(a) >>> b[4:0]; //sra worked!*
        default: result = 32'bx;
      endcase
