@@ -215,7 +215,7 @@ module controller(input  logic		 clk, reset,
    
    // Decode stage logic
    maindec md(opD, ResultSrcD, MemWriteD, BranchD,
-              ALUSrcD, RegWriteD, JumpD, ImmSrcD, ALUOpD);
+              ALUSrcD, ALUSrcAD, RegWriteD, JumpD, ImmSrcD, ALUOpD);
    aludec  ad(opD[5], funct3D, funct7b5D, ALUOpD, ALUControlD);
    
    // Execute stage pipeline control register and logic
@@ -381,7 +381,7 @@ module datapath(input logic clk, reset,
    mux3   #(32)  faemux(RD1E, ResultW, ALUResultM, ForwardAE, SrcAE);
    mux3   #(32)  fbemux(RD2E, ResultW, ALUResultM, ForwardBE, WriteDataE);
    mux2   #(32)  srcbmux(WriteDataE, ImmExtE, ALUSrcE, SrcBE);
-   mux2   #(32)  SrcAMux(SrcAE, PCE, ALUsrcAE, NewSrcA);
+   mux2   #(32)  SrcAMux(SrcAE, PCE, ALUSrcAE, NewSrcA);
    alu           alu(NewSrcA, SrcBE, ALUControlE, ALUResultE, ZeroE);
    adder         branchadd(ImmExtE, PCE, PCTargetE);
 
