@@ -92,7 +92,7 @@ module testbench();
    initial
      begin
 	string memfilename;
-        memfilename = {"../riscvtest/xor-test.memfile"};
+        memfilename = {"../riscvtest/pipe-test.memfile"};
 	$readmemh(memfilename, dut.imem.RAM);
      end
    
@@ -287,7 +287,8 @@ module aludec(input  logic       opb5,
 		                3'b111: ALUControl = 4'b0010; // and, andi
 		                3'b100: ALUControl = 4'b0100; // xor, xori	
                     3'b001: ALUControl = 4'b0111; // sll, slli (just implemented)	 it worked! 
-                    3'b101: ALUControl = funct7b5 ? 4'b1001 : 4'b1000; // sra,srai if funct7b5=1, else srl,srli
+                    3'b101: ALUControl = 4'b1000; //  srl,srli
+                    // 3'b101: ALUControl = funct7b5 ? 4'b1001 : 4'b1000; // sra,srai if funct7b5=1, else srl,srli
                   default:   ALUControl = 4'bxxxx; // ???
 		endcase
      endcase
