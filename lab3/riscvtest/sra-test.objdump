@@ -1,13 +1,12 @@
 
-xor-test.elf:     file format elf32-littleriscv
+sra-test.elf:     file format elf32-littleriscv
 
 Contents of section .riscv.attributes:
  0000 41190000 00726973 63760001 0f000000  A....riscv......
  0010 05727633 32693270 3100               .rv32i2p1.      
 Contents of section .text:
  80000000 9302f0ff 13033000 b3826200 b3956200  ......0...b...b.
- 80000010 33c35500 9303a300 b3dfb300 1385827f  3.U.............
- 80000020 335e5540                             3^U@            
+ 80000010 33c35500 13858280 335e5540 6f000000  3.U.....3^U@o...
 
 Disassembly of section .riscv.attributes:
 
@@ -33,7 +32,9 @@ __start():
 80000008:	006282b3          	add	t0,t0,t1
 8000000c:	006295b3          	sll	a1,t0,t1
 80000010:	0055c333          	xor	t1,a1,t0
-80000014:	00a30393          	addi	t2,t1,10
-80000018:	00b3dfb3          	srl	t6,t2,a1
-8000001c:	7f828513          	addi	a0,t0,2040
-80000020:	40555e33          	sra	t3,a0,t0
+80000014:	80828513          	addi	a0,t0,-2040
+80000018:	40555e33          	sra	t3,a0,t0
+
+8000001c <stop>:
+stop():
+8000001c:	0000006f          	j	8000001c <stop>
