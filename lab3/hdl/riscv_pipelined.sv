@@ -149,7 +149,7 @@ module riscv(input  logic        clk, reset,
    logic [2:0] 			 funct3D;
    logic 			 funct7b5D;
    logic [2:0] 			 ImmSrcD;
-   logic 			 ZeroE;
+   logic 			 ZeroE, vE, nE, carryE;
    logic 			 PCSrcE;
    logic [3:0] 			 ALUControlE;
    logic 			 ALUSrcE, ALUSrcAE;
@@ -165,14 +165,14 @@ module riscv(input  logic        clk, reset,
    
    controller c(clk, reset,
 		opD, funct3D, funct7b5D, ImmSrcD,
-		FlushE, ZeroE, PCSrcE, ALUControlE, ALUSrcE, ALUSrcAE, ResultSrcEb0,
+		FlushE, ZeroE, vE, nE, carryE, PCSrcE, ALUControlE, ALUSrcE, ALUSrcAE, ResultSrcEb0,
 		MemWriteM, RegWriteM, 
 		RegWriteW, ResultSrcW);
 
    datapath dp(clk, reset,
                StallF, PCF, InstrF,
 	       opD, funct3D, funct7b5D, StallD, FlushD, ImmSrcD,
-	       FlushE, ForwardAE, ForwardBE, PCSrcE, ALUControlE, ALUSrcE, ALUSrcAE, ZeroE,
+	       FlushE, ForwardAE, ForwardBE, PCSrcE, ALUControlE, ALUSrcE, ALUSrcAE, ZeroE, vE, nE, carryE,
                MemWriteM, WriteDataM, ALUResultM, ReadDataM,
                RegWriteW, ResultSrcW,
                Rs1D, Rs2D, Rs1E, Rs2E, RdE, RdM, RdW);
@@ -191,7 +191,7 @@ module controller(input  logic		 clk, reset,
                   output logic [2:0] ImmSrcD,
                   // Execute stage control signals
                   input logic 	     FlushE, 
-                  input logic 	     ZeroE, 
+                  input logic 	     ZeroE, vE, nE, carryE, 
                   output logic 	     PCSrcE, // for datapath and Hazard Unit
                   output logic [3:0] ALUControlE, 
                   output logic 	     ALUSrcE, ALUSrcAE,
@@ -213,6 +213,17 @@ module controller(input  logic		 clk, reset,
    logic [3:0] 			     ALUControlD;
    logic 			     ALUSrcD, ALUSrcAD;
    
+   // Combinational logic for branching instructions
+  always_comb
+  case(funct3)
+3'b001: BranchCtrl = ~ZeroE; // Bne
+3'b101: BranchCtrl = ~(nE ^ vE); // Bge
+3'b111: BranchCtrl = carryE; // Bgeu
+3'b100: BranchCtrl = nE ^ vE; // Blt
+3'b110: BranchCtrl = ~carryE; //Bltu
+default: BranchCtrl = 1'bx;
+endcase
+
    // Decode stage logic
    maindec md(opD, ResultSrcD, MemWriteD, BranchD,
               ALUSrcD, RegWriteD, JumpD, ImmSrcD, ALUOpD);
@@ -223,7 +234,8 @@ module controller(input  logic		 clk, reset,
                             {RegWriteD, ResultSrcD, MemWriteD, JumpD, BranchD, ALUControlD, ALUSrcD, ALUSrcAD},
                             {RegWriteE, ResultSrcE, MemWriteE, JumpE, BranchE, ALUControlE, ALUSrcE, ALUSrcAE});
 
-   assign PCSrcE = (BranchE & ZeroE) | JumpE;
+   //assign PCSrcE = (BranchE & ZeroE) | JumpE; // Previous branching logic
+   assign PCSrcE = (BranchE & BranchCtrl) | Jump; // New branching logic
    assign ResultSrcEb0 = ResultSrcE[0];
    
    // Memory stage pipeline control register
@@ -317,7 +329,7 @@ module datapath(input logic clk, reset,
                 input logic 	    PCSrcE,
                 input logic [3:0]   ALUControlE,
                 input logic 	    ALUSrcE, ALUSrcAE,
-                output logic 	    ZeroE,
+                output logic 	    ZeroE, vE, nE, carryE,
                 // Memory stage signals
                 input logic 	    MemWriteM, 
                 output logic [31:0] WriteDataM, ALUResultM,
@@ -381,8 +393,8 @@ module datapath(input logic clk, reset,
    mux3   #(32)  faemux(RD1E, ResultW, ALUResultM, ForwardAE, SrcAE);
    mux3   #(32)  fbemux(RD2E, ResultW, ALUResultM, ForwardBE, WriteDataE);
    mux2   #(32)  srcbmux(WriteDataE, ImmExtE, ALUSrcE, SrcBE);
-   mux2   #(32)  SrcAMux(SrcAE, PCE, ALUsrcAE, NewSrcA);
-   alu           alu(NewSrcA, SrcBE, ALUControlE, ALUResultE, ZeroE);
+   mux2   #(32)  SrcAMux(SrcAE, PCE, ALUSrcAE, NewSrcA);
+   alu           alu(NewSrcA, SrcBE, ALUControlE, ALUResultE, ZeroE, vE, nE, carryE);
    adder         branchadd(ImmExtE, PCE, PCTargetE);
 
    // Memory stage pipeline register
@@ -560,9 +572,10 @@ endmodule // dmem
 module alu(input  logic [31:0] a, b,
            input logic [3:0]   alucontrol,
            output logic [31:0] result,
-           output logic        zero);
+           output logic        zero, v, n, carry);
 
-   logic [31:0] 	       condinvb, sum;
+   logic [31:0] 	       condinvb;
+   logic [32:0]          sum;
    logic 		       v;              // overflow
    logic 		       isAddSub;       // true when is add or sub
 
@@ -590,6 +603,8 @@ module alu(input  logic [31:0] a, b,
 
    assign zero = (result == 32'b0);
    assign v = ~(alucontrol[0] ^ a[31] ^ b[31]) & (a[31] ^ sum[31]) & isAddSub;
+   assign carry = sum[32]; // carry flag
+   assign n = result[31]; // Flag for negative result
    
 endmodule
 
