@@ -93,7 +93,7 @@ module testbench();
    initial
      begin
 	string memfilename;
-        memfilename = {"../riscvtest/pipe-test.memfile"};
+        memfilename = {"../testing/beq.memfile"};
 	$readmemh(memfilename, dut.imem.RAM);
      end
    
@@ -113,12 +113,12 @@ module testbench();
    always @(negedge clk)
      begin
 	if(MemWrite) begin
-           if(DataAdr === 100 & WriteData === 25) begin
+           if(DataAdr === 100 & WriteData === 10) begin
               $display("Simulation succeeded");
-              $stop;
-           end else if (DataAdr !== 96) begin
+              // $stop;
+           end else if (DataAdr ===100 & WriteData === 17) begin
               $display("Simulation failed");
-              $stop;
+              // $stop;
            end
 	end
      end
@@ -209,20 +209,22 @@ module controller(input  logic		 clk, reset,
    logic 			     MemWriteD, MemWriteE;
    logic 			     JumpD, JumpE;
    logic 			     BranchD, BranchE;
-   logic [2:0] 			     ALUOpD;
+   logic [2:0] 			     ALUOpD, BranchCtrl;
    logic [3:0] 			     ALUControlD;
    logic 			     ALUSrcD, ALUSrcAD;
    
    // Combinational logic for branching instructions
-  always_comb
-  case(funct3)
-3'b001: BranchCtrl = ~ZeroE; // Bne
-3'b101: BranchCtrl = ~(nE ^ vE); // Bge
-3'b111: BranchCtrl = carryE; // Bgeu
-3'b100: BranchCtrl = nE ^ vE; // Blt
-3'b110: BranchCtrl = ~carryE; //Bltu
-default: BranchCtrl = 1'bx;
-endcase
+  always_comb begin
+    case(funct3D)
+    3'b000: BranchCtrl = ZeroE; // Beq
+    3'b001: BranchCtrl = ~ZeroE; // Bne
+    3'b101: BranchCtrl = ~(nE ^ vE); // Bge
+    3'b111: BranchCtrl = carryE; // Bgeu
+    3'b100: BranchCtrl = nE ^ vE; // Blt
+    3'b110: BranchCtrl = ~carryE; //Bltu
+    default: BranchCtrl = 1'bx;
+    endcase
+  end
 
    // Decode stage logic
    maindec md(opD, ResultSrcD, MemWriteD, BranchD,
@@ -235,7 +237,7 @@ endcase
                             {RegWriteE, ResultSrcE, MemWriteE, JumpE, BranchE, ALUControlE, ALUSrcE, ALUSrcAE});
 
    //assign PCSrcE = (BranchE & ZeroE) | JumpE; // Previous branching logic
-   assign PCSrcE = (BranchE & BranchCtrl) | Jump; // New branching logic
+   assign PCSrcE = (BranchE & BranchCtrl) | JumpE; // New branching logic
    assign ResultSrcEb0 = ResultSrcE[0];
    
    // Memory stage pipeline control register
@@ -394,8 +396,8 @@ module datapath(input logic clk, reset,
    mux3   #(32)  fbemux(RD2E, ResultW, ALUResultM, ForwardBE, WriteDataE);
    mux2   #(32)  srcbmux(WriteDataE, ImmExtE, ALUSrcE, SrcBE);
    mux2   #(32)  SrcAMux(SrcAE, PCE, ALUSrcAE, NewSrcA);
-   alu           alu(NewSrcA, SrcBE, ALUControlE, ALUResultE, ZeroE);
-   mux2   #(32)  SrcAMux(SrcAE, PCE, ALUSrcAE, NewSrcA);
+  //  alu           alu(NewSrcA, SrcBE, ALUControlE, ALUResultE, ZeroE);
+  //  mux2   #(32)  SrcAMux(SrcAE, PCE, ALUSrcAE, NewSrcA);
    alu           alu(NewSrcA, SrcBE, ALUControlE, ALUResultE, ZeroE, vE, nE, carryE);
    adder         branchadd(ImmExtE, PCE, PCTargetE);
 
@@ -553,7 +555,7 @@ endmodule
 module imem (input  logic [31:0] a,
 	     output logic [31:0] rd);
    
-   logic [31:0] 		 RAM[63:0];
+   logic [31:0] 		 RAM[171:0];
    
    assign rd = RAM[a[31:2]]; // word aligned
    
@@ -578,7 +580,7 @@ module alu(input  logic [31:0] a, b,
 
    logic [31:0] 	       condinvb;
    logic [32:0]          sum;
-   logic 		       v;              // overflow
+  //  logic 		       v;              // overflow
    logic 		       isAddSub;       // true when is add or sub
 
    assign condinvb = alucontrol[0] ? ~b : b;
