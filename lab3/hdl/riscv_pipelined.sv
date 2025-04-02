@@ -374,7 +374,7 @@ module datapath(input logic clk, reset,
    // Fetch stage pipeline register and logic
    mux2    #(32) jalrmux(PCF, ALUResultE, jalrSrc, NewPCF);
    mux2    #(32) pcmux(PCPlus4F, PCTargetE, PCSrcE, PCNextF);
-   flopenr #(32) pcreg(clk, reset, ~StallF, PCNextF, PCF);
+   flopenr #(32) pcreg(clk, reset, ~StallF, NewPCF, PCF);
 
    // Decode stage pipeline register and logic
    flopenrc #(96) regD(clk, reset, FlushD, ~StallD, 
