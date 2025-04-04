@@ -153,11 +153,11 @@ module riscv(input  logic        clk, reset,
    logic 			 ZeroE, vE, nE, carryE;
    logic 			 PCSrcE;
    logic [3:0] 			 ALUControlE;
-   logic 			 ALUSrcE, ALUSrcAE, jalrSrc;
+   logic 			 ALUSrcE, ALUSrcAE;
    logic 			 ResultSrcEb0;
    logic 			 RegWriteM;
    logic [1:0] 			 ResultSrcW;
-   logic 			 RegWriteW;
+   logic 			 RegWriteW, jalrSrcW;
 
    logic [1:0] 			 ForwardAE, ForwardBE;
    logic 			 StallF, StallD, FlushD, FlushE;
@@ -166,16 +166,16 @@ module riscv(input  logic        clk, reset,
    
    controller c(clk, reset,
 		opD, funct3D, funct7b5D, ImmSrcD,
-		FlushE, ZeroE, vE, nE, carryE, PCSrcE, ALUControlE, ALUSrcE, ALUSrcAE, jalrSrc, ResultSrcEb0,
+		FlushE, ZeroE, vE, nE, carryE, PCSrcE, ALUControlE, ALUSrcE, ALUSrcAE, ResultSrcEb0,
 		MemWriteM, RegWriteM, 
-		RegWriteW, ResultSrcW);
+		RegWriteW, jalrSrcW, ResultSrcW);
 
    datapath dp(clk, reset,
                StallF, PCF, InstrF,
 	       opD, funct3D, funct7b5D, StallD, FlushD, ImmSrcD,
-	       FlushE, ForwardAE, ForwardBE, PCSrcE, ALUControlE, ALUSrcE, ALUSrcAE, jalrSrc, ZeroE, vE, nE, carryE,
+	       FlushE, ForwardAE, ForwardBE, PCSrcE, ALUControlE, ALUSrcE, ALUSrcAE, ZeroE, vE, nE, carryE,
                MemWriteM, WriteDataM, ALUResultM, ReadDataM,
-               RegWriteW, ResultSrcW,
+               RegWriteW, jalrSrcW, ResultSrcW,
                Rs1D, Rs2D, Rs1E, Rs2E, RdE, RdM, RdW);
 
    hazard  hu(Rs1D, Rs2D, Rs1E, Rs2E, RdE, RdM, RdW,
@@ -195,13 +195,13 @@ module controller(input  logic		 clk, reset,
                   input logic 	     ZeroE, vE, nE, carryE, 
                   output logic 	     PCSrcE, // for datapath and Hazard Unit
                   output logic [3:0] ALUControlE, 
-                  output logic 	     ALUSrcE, ALUSrcAE, jalrSrc,
+                  output logic 	     ALUSrcE, ALUSrcAE,
                   output logic 	     ResultSrcEb0, // for Hazard Unit
                   // Memory stage control signals
                   output logic 	     MemWriteM,
                   output logic 	     RegWriteM, // for Hazard Unit				  
                   // Writeback stage control signals
-                  output logic 	     RegWriteW, // for datapath and Hazard Unit
+                  output logic 	     RegWriteW, jalrSrcW, // for datapath and Hazard Unit
                   output logic [1:0] ResultSrcW);
 
    // pipelined control signals
@@ -213,7 +213,7 @@ module controller(input  logic		 clk, reset,
    logic [2:0] 			     ALUOpD, funct3E;
    logic [3:0] 			     ALUControlD;
    logic 			     ALUSrcD, ALUSrcAD;
-   logic            jalrSrcE;
+   logic            jalrSrcD, jalrSrcE, jalrSrcM;
    
    // Combinational logic for branching instructions
   always_comb begin
@@ -235,7 +235,7 @@ module controller(input  logic		 clk, reset,
    
    // Execute stage pipeline control register and logic
    floprc #(16) controlregE(clk, reset, FlushE,
-                            {RegWriteD, ResultSrcD, MemWriteD, JumpD, BranchD, ALUControlD, ALUSrcD, ALUSrcAD, funct3D, jalrSrc},
+                            {RegWriteD, ResultSrcD, MemWriteD, JumpD, BranchD, ALUControlD, ALUSrcD, ALUSrcAD, funct3D, jalrSrD},
                             {RegWriteE, ResultSrcE, MemWriteE, JumpE, BranchE, ALUControlE, ALUSrcE, ALUSrcAE, funct3E, jalrSrcE});
 
    //assign PCSrcE = (BranchE & ZeroE) | JumpE; // Previous branching logic
@@ -243,14 +243,14 @@ module controller(input  logic		 clk, reset,
    assign ResultSrcEb0 = ResultSrcE[0];
    
    // Memory stage pipeline control register
-   flopr #(4) controlregM(clk, reset,
-                          {RegWriteE, ResultSrcE, MemWriteE},
-                          {RegWriteM, ResultSrcM, MemWriteM});
+   flopr #(5) controlregM(clk, reset,
+                          {RegWriteE, ResultSrcE, MemWriteE, jalrSrcE},
+                          {RegWriteM, ResultSrcM, MemWriteM, jalrSrcM});
    
    // Writeback stage pipeline control register
-   flopr #(3) controlregW(clk, reset,
-                          {RegWriteM, ResultSrcM},
-                          {RegWriteW, ResultSrcW});     
+   flopr #(4) controlregW(clk, reset,
+                          {RegWriteM, ResultSrcM, jalrSrcM},
+                          {RegWriteW, ResultSrcW, jalrSrcW});     
 endmodule
 
 module maindec(input  logic [6:0] op,
@@ -333,14 +333,14 @@ module datapath(input logic clk, reset,
                 input logic [1:0]   ForwardAE, ForwardBE,
                 input logic 	    PCSrcE,
                 input logic [3:0]   ALUControlE,
-                input logic 	    ALUSrcE, ALUSrcAE, jalrSrc,
+                input logic 	    ALUSrcE, ALUSrcAE,
                 output logic 	    ZeroE, vE, nE, carryE,
                 // Memory stage signals
                 input logic 	    MemWriteM, 
                 output logic [31:0] WriteDataM, ALUResultM,
                 input logic [31:0]  ReadDataM,
                 // Writeback stage signals
-                input logic 	    RegWriteW, 
+                input logic 	    RegWriteW, jalrSrcW, 
                 input logic [1:0]   ResultSrcW,
                 // Hazard Unit signals 
                 output logic [4:0]  Rs1D, Rs2D, Rs1E, Rs2E,
@@ -372,7 +372,7 @@ module datapath(input logic clk, reset,
    logic [31:0] 		    ResultW;
 
    // Fetch stage pipeline register and logic
-   mux2    #(32) jalrmux(PCF, ALUResultE, jalrSrc, NewPCF);
+   mux2    #(32) jalrmux(PCNextF, ALUResultE, jalrSrcW, NewPCF);
    mux2    #(32) pcmux(PCPlus4F, PCTargetE, PCSrcE, PCNextF);
    flopenr #(32) pcreg(clk, reset, ~StallF, NewPCF, PCF);
 
