@@ -93,9 +93,9 @@ module testbench();
    initial
      begin
 	string memfilename;
-        memfilename = {"../testing/jalr.memfile"};
+        memfilename = {"../testing/sb.memfile"};
 	$readmemh(memfilename, dut.imem.RAM);
-  // $readmemh(memfilename, dut.dmem.RAM); // load the memfile into dmem to be able to access the hardcoded constants
+  $readmemh(memfilename, dut.dmem.RAM); // load the memfile into dmem to be able to access the hardcoded constants
      end
    
    // initialize test
@@ -153,11 +153,12 @@ module riscv(input  logic        clk, reset,
    logic 			 ZeroE, vE, nE, carryE;
    logic 			 PCSrcE;
    logic [3:0] 			 ALUControlE;
+   logic [2:0] LoadTypeW, StoreTypeM;      // signal to trigger a specific load instruction
    logic 			 ALUSrcE, ALUSrcAE;
    logic 			 ResultSrcEb0;
    logic 			 RegWriteM;
    logic [1:0] 			 ResultSrcW;
-   logic 			 RegWriteW, jalrSrcW;
+   logic 			 RegWriteW, jalrSrcE;
 
    logic [1:0] 			 ForwardAE, ForwardBE;
    logic 			 StallF, StallD, FlushD, FlushE;
@@ -166,16 +167,16 @@ module riscv(input  logic        clk, reset,
    
    controller c(clk, reset,
 		opD, funct3D, funct7b5D, ImmSrcD,
-		FlushE, ZeroE, vE, nE, carryE, PCSrcE, ALUControlE, ALUSrcE, ALUSrcAE, ResultSrcEb0,
-		MemWriteM, RegWriteM, 
-		RegWriteW, jalrSrcW, ResultSrcW);
+		FlushE, ZeroE, vE, nE, carryE, PCSrcE, ALUControlE, jalrSrcE, ALUSrcE, ALUSrcAE, ResultSrcEb0,
+		MemWriteM, RegWriteM, StoreTypeM,
+		RegWriteW, ResultSrcW, LoadTypeW);
 
    datapath dp(clk, reset,
                StallF, PCF, InstrF,
 	       opD, funct3D, funct7b5D, StallD, FlushD, ImmSrcD,
-	       FlushE, ForwardAE, ForwardBE, PCSrcE, ALUControlE, ALUSrcE, ALUSrcAE, ZeroE, vE, nE, carryE,
-               MemWriteM, WriteDataM, ALUResultM, ReadDataM,
-               RegWriteW, jalrSrcW, ResultSrcW,
+	       FlushE, ForwardAE, ForwardBE, PCSrcE, ALUControlE, jalrSrcE, ALUSrcE, ALUSrcAE, ZeroE, vE, nE, carryE,
+               MemWriteM, WriteDataM, ALUResultM, ReadDataM, StoreTypeM,
+               RegWriteW, ResultSrcW, LoadTypeW,
                Rs1D, Rs2D, Rs1E, Rs2E, RdE, RdM, RdW);
 
    hazard  hu(Rs1D, Rs2D, Rs1E, Rs2E, RdE, RdM, RdW,
@@ -194,15 +195,18 @@ module controller(input  logic		 clk, reset,
                   input logic 	     FlushE, 
                   input logic 	     ZeroE, vE, nE, carryE, 
                   output logic 	     PCSrcE, // for datapath and Hazard Unit
-                  output logic [3:0] ALUControlE, 
+                  output logic [3:0] ALUControlE,
+                  output logic       jalrSrcE, 
                   output logic 	     ALUSrcE, ALUSrcAE,
                   output logic 	     ResultSrcEb0, // for Hazard Unit
                   // Memory stage control signals
                   output logic 	     MemWriteM,
-                  output logic 	     RegWriteM, // for Hazard Unit				  
+                  output logic 	     RegWriteM, // for Hazard Unit	
+                  output logic [2:0] StoreTypeM,			  
                   // Writeback stage control signals
-                  output logic 	     RegWriteW, jalrSrcW, // for datapath and Hazard Unit
-                  output logic [1:0] ResultSrcW);
+                  output logic 	     RegWriteW, // for datapath and Hazard Unit
+                  output logic [1:0] ResultSrcW,
+                  output logic [2:0] LoadTypeW);
 
    // pipelined control signals
    logic 			     RegWriteD, RegWriteE;
@@ -213,7 +217,8 @@ module controller(input  logic		 clk, reset,
    logic [2:0] 			     ALUOpD, funct3E;
    logic [3:0] 			     ALUControlD;
    logic 			     ALUSrcD, ALUSrcAD;
-   logic            jalrSrcD, jalrSrcE, jalrSrcM;
+   logic            jalrSrcD;
+   logic [2:0]     LoadTypeD, LoadTypeE, LoadTypeM, StoreTypeD, StoreTypeE;
    
    // Combinational logic for branching instructions
   always_comb begin
@@ -230,33 +235,33 @@ module controller(input  logic		 clk, reset,
 
    // Decode stage logic
    maindec md(opD, ResultSrcD, MemWriteD, BranchD,
-              ALUSrcD, ALUSrcAD, jalrSrc, RegWriteD, JumpD, ImmSrcD, ALUOpD);
-   aludec  ad(opD[5], funct3D, funct7b5D, ALUOpD, ALUControlD);
+              ALUSrcD, ALUSrcAD, jalrSrcD, RegWriteD, JumpD, ImmSrcD, ALUOpD);
+   aludec  ad(opD[5], funct3D, funct7b5D, ALUOpD, ALUControlD, LoadTypeD, StoreTypeD);
    
    // Execute stage pipeline control register and logic
-   floprc #(16) controlregE(clk, reset, FlushE,
-                            {RegWriteD, ResultSrcD, MemWriteD, JumpD, BranchD, ALUControlD, ALUSrcD, ALUSrcAD, funct3D, jalrSrD},
-                            {RegWriteE, ResultSrcE, MemWriteE, JumpE, BranchE, ALUControlE, ALUSrcE, ALUSrcAE, funct3E, jalrSrcE});
+   floprc #(22) controlregE(clk, reset, FlushE,
+                            {RegWriteD, ResultSrcD, MemWriteD, JumpD, BranchD, ALUControlD, ALUSrcD, ALUSrcAD, funct3D, jalrSrcD, LoadTypeD, StoreTypeD},
+                            {RegWriteE, ResultSrcE, MemWriteE, JumpE, BranchE, ALUControlE, ALUSrcE, ALUSrcAE, funct3E, jalrSrcE, LoadTypeE, StoreTypeE});
 
    //assign PCSrcE = (BranchE & ZeroE) | JumpE; // Previous branching logic
    assign PCSrcE = (BranchE & BranchCtrl) | JumpE; // New branching logic
    assign ResultSrcEb0 = ResultSrcE[0];
    
    // Memory stage pipeline control register
-   flopr #(5) controlregM(clk, reset,
-                          {RegWriteE, ResultSrcE, MemWriteE, jalrSrcE},
-                          {RegWriteM, ResultSrcM, MemWriteM, jalrSrcM});
+   flopr #(10) controlregM(clk, reset,
+                          {RegWriteE, ResultSrcE, MemWriteE, LoadTypeE, StoreTypeE},
+                          {RegWriteM, ResultSrcM, MemWriteM, LoadTypeM, StoreTypeM});
    
    // Writeback stage pipeline control register
-   flopr #(4) controlregW(clk, reset,
-                          {RegWriteM, ResultSrcM, jalrSrcM},
-                          {RegWriteW, ResultSrcW, jalrSrcW});     
+   flopr #(6) controlregW(clk, reset,
+                          {RegWriteM, ResultSrcM, LoadTypeM},
+                          {RegWriteW, ResultSrcW, LoadTypeW});     
 endmodule
 
 module maindec(input  logic [6:0] op,
                output logic [1:0] ResultSrc,
                output logic 	  MemWrite,
-               output logic 	  Branch, ALUSrc, ALUSrcAE, jalrSrc,
+               output logic 	  Branch, ALUSrc, ALUSrcAE, jalrSrcD,
                output logic 	  RegWrite, Jump,
                output logic [2:0] ImmSrc,
                output logic [2:0] ALUOp);
@@ -264,7 +269,7 @@ module maindec(input  logic [6:0] op,
    logic [14:0] 		  controls;
 
    assign {RegWrite, ImmSrc, ALUSrc, MemWrite,
-           ResultSrc, Branch, ALUOp, Jump, ALUSrcAE, jalrSrc} = controls;
+           ResultSrc, Branch, ALUOp, Jump, ALUSrcAE, jalrSrcD} = controls;
     /* control implemented in lab2:
     //  7'b0110111: controls = 16'b1_100_1_0_00_0_011_0_0_0_0; // lui
     */
@@ -279,7 +284,7 @@ module maindec(input  logic [6:0] op,
        7'b1101111: controls = 15'b1_011_0_0_10_0_000_1_0_0; // jal
        7'b0110111: controls = 15'b1_100_1_0_00_0_011_0_0_0; // lui
        7'b0010111: controls = 15'b1_100_1_0_00_0_100_0_1_0; // auipc
-       7'b1100111: controls = 15'b1_000_1_0_10_0_010_0_0_1; // jalr
+       7'b1100111: controls = 15'b1_000_1_0_10_0_010_1_0_1; // jalr
        7'b0000000: controls = 15'b0_000_0_0_00_0_000_0_0_0; // need valid values at reset
        default:    controls = 15'bx_xxx_x_x_xx_x_xxx_x_x_0; // non-implemented instruction
      endcase
@@ -289,7 +294,8 @@ module aludec(input  logic       opb5,
               input logic [2:0]  funct3,
               input logic 	 funct7b5, 
               input logic [2:0]  ALUOp,
-              output logic [3:0] ALUControl);
+              output logic [3:0] ALUControl,
+              output logic [2:0] LoadTypeD, StoreTypeD);
 
    logic 			 RtypeSub;
    assign RtypeSub = funct7b5 & opb5;  // TRUE for R-type subtract instruction
@@ -315,6 +321,27 @@ module aludec(input  logic       opb5,
                   default:   ALUControl = 4'bxxxx; // ???
 		endcase
      endcase
+     
+    /*load operations control unit was added to determine load operation*/
+   always_comb
+     case (funct3)
+       3'b000: LoadTypeD = 3'b000;     // lb
+       3'b001: LoadTypeD = 3'b001;     // lh
+       3'b010: LoadTypeD = 3'b010;     // lw
+       3'b100: LoadTypeD = 3'b100;     // lbu0
+       3'b101: LoadTypeD = 3'b101;     // lhu
+      default: LoadTypeD = 3'bx;     // Undefined or error state
+     endcase
+
+  //store operations control unit was added to determine load operation
+   always_comb 
+     case (funct3)
+       3'b000: StoreTypeD = 3'b000;     // sb
+       3'b001: StoreTypeD = 3'b001;     // sh
+       3'b010: StoreTypeD = 3'b010;     // sw
+      default: StoreTypeD = 3'bx;     // Undefined or error state
+     endcase 
+
 endmodule
 
 module datapath(input logic clk, reset,
@@ -333,15 +360,18 @@ module datapath(input logic clk, reset,
                 input logic [1:0]   ForwardAE, ForwardBE,
                 input logic 	    PCSrcE,
                 input logic [3:0]   ALUControlE,
+                input logic jalrSrcE,
                 input logic 	    ALUSrcE, ALUSrcAE,
                 output logic 	    ZeroE, vE, nE, carryE,
                 // Memory stage signals
                 input logic 	    MemWriteM, 
                 output logic [31:0] WriteDataM, ALUResultM,
                 input logic [31:0]  ReadDataM,
+                input logic [2:0]  StoreTypeM,
                 // Writeback stage signals
-                input logic 	    RegWriteW, jalrSrcW, 
+                input logic 	    RegWriteW, 
                 input logic [1:0]   ResultSrcW,
+                input logic [2:0] LoadTypeW,
                 // Hazard Unit signals 
                 output logic [4:0]  Rs1D, Rs2D, Rs1E, Rs2E,
                 output logic [4:0]  RdE, RdM, RdW);
@@ -364,18 +394,19 @@ module datapath(input logic clk, reset,
    logic [31:0] 		    PCPlus4E;
    logic [31:0] 		    PCTargetE;
    // Memory stage signals
-   logic [31:0] 		    PCPlus4M;
+   logic [31:0] 		    PCPlus4M, RD2M;
    // Writeback stage signals
    logic [31:0] 		    ALUResultW;
    logic [31:0] 		    ReadDataW;
    logic [31:0] 		    PCPlus4W;
    logic [31:0] 		    ResultW;
+   logic [31:0]         LoadOutW;
 
    // Fetch stage pipeline register and logic
-   mux2    #(32) jalrmux(PCNextF, ALUResultE, jalrSrcW, NewPCF);
    mux2    #(32) pcmux(PCPlus4F, PCTargetE, PCSrcE, PCNextF);
+   mux2    #(32) jalrmux(PCNextF, ALUResultE, jalrSrcE, NewPCF);
    flopenr #(32) pcreg(clk, reset, ~StallF, NewPCF, PCF);
-
+   adder         pcadd(PCF, 32'h4, PCPlus4F);
    // Decode stage pipeline register and logic
    flopenrc #(96) regD(clk, reset, FlushD, ~StallD, 
                        {InstrF, PCF, PCPlus4F},
@@ -405,15 +436,17 @@ module datapath(input logic clk, reset,
    adder         branchadd(ImmExtE, PCE, PCTargetE);
 
    // Memory stage pipeline register
-   flopr  #(101) regM(clk, reset, 
-                      {ALUResultE, WriteDataE, RdE, PCPlus4E},
-                      {ALUResultM, WriteDataM, RdM, PCPlus4M});
+   flopr  #(133) regM(clk, reset, 
+                      {ALUResultE, WriteDataE, RdE, PCPlus4E, RD2E},
+                      {ALUResultM, WriteDataM, RdM, PCPlus4M, RD2M});
+   store st (RD2M, ReadDataM, ALUResultM[1:0], StoreTypeM, WriteDataM); // M stage
    
    // Writeback stage pipeline register and logic
    flopr  #(101) regW(clk, reset, 
                       {ALUResultM, ReadDataM, RdM, PCPlus4M},
                       {ALUResultW, ReadDataW, RdW, PCPlus4W});
-   mux3   #(32)  resultmux(ALUResultW, ReadDataW, PCPlus4W, ResultSrcW, ResultW);	
+   load  ld (ReadDataW, ALUResultW[1:0], LoadTypeW, LoadOutW); // ALUResult[1:0] is used to select and load the correct byte
+   mux3   #(32)  resultmux(ALUResultW, LoadOutW, PCPlus4W, ResultSrcW, ResultW);	
 endmodule
 
 // Hazard Unit: forward, stall, and flush
@@ -444,6 +477,86 @@ module hazard(input  logic [4:0] Rs1D, Rs2D, Rs1E, Rs2E, RdE, RdM, RdW,
    assign StallF = lwStallD;
    assign FlushD = PCSrcE;
    assign FlushE = lwStallD | PCSrcE;
+endmodule
+
+module load ( input  logic [31:0] ReadDataW,
+              input  logic [1:0]  AddressW,      // lower two bits of ReadData
+              input  logic [2:0]  LoadTypeW,
+              output logic [31:0] LoadOutW);
+
+  // Load operations control unit
+  always_comb begin
+    case (LoadTypeW)
+      3'b000: begin // lb (load byte) with sign extension
+        case (AddressW)
+          2'b00: LoadOutW = {{24{ReadDataW[7]}},  ReadDataW[7:0]};
+          2'b01: LoadOutW = {{24{ReadDataW[15]}}, ReadDataW[15:8]};
+          2'b10: LoadOutW = {{24{ReadDataW[23]}}, ReadDataW[23:16]};
+          2'b11: LoadOutW = {{24{ReadDataW[31]}}, ReadDataW[31:24]};
+          default: LoadOutW = 32'bx;
+        endcase
+      end
+      3'b100: begin // lbu (load byte unsigned)
+        case (AddressW)
+          2'b00: LoadOutW = {24'b0, ReadDataW[7:0]};
+          2'b01: LoadOutW = {24'b0, ReadDataW[15:8]};
+          2'b10: LoadOutW = {24'b0, ReadDataW[23:16]};
+          2'b11: LoadOutW = {24'b0, ReadDataW[31:24]};
+          default: LoadOutW = 32'bx;
+        endcase
+      end
+      3'b001: begin // lh (load half-word) with sign extension
+        case (AddressW[1])
+          1'b0: LoadOutW = {{16{ReadDataW[15]}}, ReadDataW[15:0]};
+          1'b1: LoadOutW = {{16{ReadDataW[31]}}, ReadDataW[31:16]};
+          default: LoadOutW = 32'bx;
+        endcase
+      end
+      3'b101: begin // lhu (load half-word unsigned)
+        case (AddressW[1])
+          1'b0: LoadOutW = {16'b0, ReadDataW[15:0]};
+          1'b1: LoadOutW = {16'b0, ReadDataW[31:16]};
+          default: LoadOutW = 32'bx;
+        endcase
+      end
+      3'b010: LoadOutW = ReadDataW; // lw (load word)    
+      default: LoadOutW = 32'bx; // Undefined or error state
+    endcase
+  end
+
+endmodule
+
+  //  store st (RD2M, ReadDataM, ALUResultM[1:0], StoreTypeW, WriteDataM); // M stage
+
+module store (input logic[31:0] RD2M, ReadDataM,
+              input logic [1:0] AddressM,
+              input logic [2:0] StoreTypeM,
+              output logic [31:0] WriteDataM);
+
+// Load operations control unit
+  always_comb begin
+    case (StoreTypeM)
+      3'b000: begin // sb (store byte)
+        case (AddressM)
+          2'b00: WriteDataM = {ReadDataM[31:8], RD2M[7:0]};                                  
+          2'b01: WriteDataM = {ReadDataM[31:16], RD2M[7:0], ReadDataM[7:0]};    
+          2'b10: WriteDataM = {ReadDataM[31:24], RD2M[7:0], ReadDataM[15:0]};                     
+          2'b11: WriteDataM = {RD2M[7:0], ReadDataM[23:0]};
+          default: WriteDataM = 32'bx;  
+        endcase
+      end
+      3'b001: begin // sh (store half-word)
+        case (AddressM[1])
+          1'b0: WriteDataM = {ReadDataM[31:16], RD2M[15:0]};
+          1'b1: WriteDataM = {RD2M[15:0], ReadDataM[15:0]};
+          default: WriteDataM = 32'bx;
+        endcase
+      end
+      3'b010:  WriteDataM = RD2M; // sw (store word)    
+      default: WriteDataM = 32'bx; // Undefined or error state
+    endcase
+  end
+
 endmodule
 
 module regfile(input  logic        clk, 
@@ -558,7 +671,7 @@ endmodule
 module imem (input  logic [31:0] a,
 	     output logic [31:0] rd);
    
-   logic [31:0] 		 RAM[340:0];
+   logic [31:0] 		 RAM[1035:0];
    
    assign rd = RAM[a[31:2]]; // word aligned
    
@@ -568,7 +681,7 @@ module dmem (input  logic        clk, we,
 	     input  logic [31:0] a, wd,
 	     output logic [31:0] rd);
    
-   logic [31:0] 		 RAM[255:0];
+   logic [31:0] 		 RAM[1035:0];
    
    assign rd = RAM[a[31:2]]; // word aligned
    always_ff @(posedge clk)
