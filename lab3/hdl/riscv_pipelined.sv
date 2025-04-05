@@ -400,7 +400,7 @@ module datapath(input logic clk, reset,
    logic [31:0] 		    ReadDataW;
    logic [31:0] 		    PCPlus4W;
    logic [31:0] 		    ResultW;
-   logic [31:0]         LoadOutW;
+   logic [31:0]         LoadOutW, WriteData_M;
 
    // Fetch stage pipeline register and logic
    mux2    #(32) pcmux(PCPlus4F, PCTargetE, PCSrcE, PCNextF);
@@ -438,7 +438,7 @@ module datapath(input logic clk, reset,
    // Memory stage pipeline register
    flopr  #(133) regM(clk, reset, 
                       {ALUResultE, WriteDataE, RdE, PCPlus4E, RD2E},
-                      {ALUResultM, WriteDataM, RdM, PCPlus4M, RD2M});
+                      {ALUResultM, WriteData_M, RdM, PCPlus4M, RD2M});
    store st (RD2M, ReadDataM, ALUResultM[1:0], StoreTypeM, WriteDataM); // M stage
    
    // Writeback stage pipeline register and logic
@@ -526,7 +526,6 @@ module load ( input  logic [31:0] ReadDataW,
 
 endmodule
 
-  //  store st (RD2M, ReadDataM, ALUResultM[1:0], StoreTypeW, WriteDataM); // M stage
 
 module store (input logic[31:0] RD2M, ReadDataM,
               input logic [1:0] AddressM,

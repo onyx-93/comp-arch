@@ -1,6 +1,6 @@
 # do riscv_pipelined.do
 # QuestaSim-64 vlog 2024.3_2 Compiler 2024.11 Nov 25 2024
-# Start time: 18:59:54 on Apr 04,2025
+# Start time: 19:16:33 on Apr 04,2025
 # vlog riscv_pipelined.sv 
 # -- Compiling module testbench
 # -- Compiling module top
@@ -27,16 +27,16 @@
 # 
 # Top level modules:
 # 	testbench
-# End time: 18:59:54 on Apr 04,2025, Elapsed time: 0:00:00
+# End time: 19:16:33 on Apr 04,2025, Elapsed time: 0:00:00
 # Errors: 0, Warnings: 0
 # vsim -debugdb -voptargs="+acc" work.testbench 
-# Start time: 18:59:54 on Apr 04,2025
+# Start time: 19:16:33 on Apr 04,2025
 # ** Note: (vsim-3812) Design is being optimized...
 # ** Note: (vsim-8611) Generating debug db.
 # ** Warning: (vopt-10587) Some optimizations are turned off because the +acc switch is in effect. This will cause your simulation to run slowly. Please use -access/-debug to maintain needed visibility. The +acc switch would be deprecated in a future release.
 # Support of the MGLS_LICENSE_FILE and LM_LICENSE_FILE licensing environment variables will be discontinued starting with the 2025.1 release. Please update to using the SALT_LICENSE_SERVER variable.
 # Please contact Siemens EDA Customer Support (https://support.sw.siemens.com/) for assistance.
-# ** Note: (vopt-4301) Memory core inferred for signal 'RAM' width=32, depth=1036, type=RAM at location riscv_pipelined.sv:684
+# ** Note: (vopt-4301) Memory core inferred for signal 'RAM' width=32, depth=1036, type=RAM at location riscv_pipelined.sv:683
 # ** Note: (vsim-12126) Error and warning message counts have been restored: Errors=0, Warnings=1.
 # //  Questa Sim-64
 # //  Version 2024.3_2 linux_x86_64 Nov 25 2024
@@ -79,8 +79,15 @@
 # Loading work.hazard(fast)
 # Loading work.imem(fast)
 # Loading work.dmem(fast)
-# ** Error (suppressible): (vsim-3839) Variable '/testbench/dut/rv32pipe/dp/WriteDataM', driven via a port connection, is multiply driven. See riscv_pipelined.sv(439).
-#    Time: 0 ns  Iteration: 0  Instance: /testbench/dut/rv32pipe/dp/st File: riscv_pipelined.sv Line: 442
-# Error loading design
-# End time: 18:59:54 on Apr 04,2025, Elapsed time: 0:00:00
-# Errors: 1, Warnings: 1
+# ** Note: (vsim-8900) Creating design debug database vsim.dbg.
+# configure wave not supported in batch mode
+# configure wave not supported in batch mode
+# configure wave not supported in batch mode
+# configure wave not supported in batch mode
+# configure wave not supported in batch mode
+# configure wave not supported in batch mode
+# configure wave not supported in batch mode
+# configure wave not supported in batch mode
+# add schematic not supported in batch mode
+# End time: 19:16:47 on Apr 04,2025, Elapsed time: 0:00:14
+# Errors: 0, Warnings: 1
