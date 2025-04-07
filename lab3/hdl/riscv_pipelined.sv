@@ -392,7 +392,7 @@ module datapath(input logic clk, reset,
    logic [31:0] 		    PCPlus4E;
    logic [31:0] 		    PCTargetE;
    // Memory stage signals
-   logic [31:0] 		    PCPlus4M, RD2M, WriteData_M;
+   logic [31:0] 		    PCPlus4M, RD2M;
    // Writeback stage signals
    logic [31:0] 		    ALUResultW;
    logic [31:0] 		    ReadDataW;
