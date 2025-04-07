@@ -93,7 +93,7 @@ module testbench();
    initial
      begin
 	string memfilename;
-        memfilename = {"../testing/sb.memfile"};
+        memfilename = {"../testing/sh.memfile"};
 	$readmemh(memfilename, dut.imem.RAM);
   $readmemh(memfilename, dut.dmem.RAM); // load the memfile into dmem to be able to access the hardcoded constants
      end
@@ -116,10 +116,8 @@ module testbench();
 	if(MemWrite) begin
            if(DataAdr === 100 & WriteData === 10) begin
               $display("Simulation succeeded");
-              // $stop;
            end else if (DataAdr ===100 & WriteData === 17) begin
               $display("Simulation failed");
-              // $stop;
            end
 	end
      end
@@ -394,13 +392,13 @@ module datapath(input logic clk, reset,
    logic [31:0] 		    PCPlus4E;
    logic [31:0] 		    PCTargetE;
    // Memory stage signals
-   logic [31:0] 		    PCPlus4M, RD2M;
+   logic [31:0] 		    PCPlus4M, RD2M, WriteData_M;
    // Writeback stage signals
    logic [31:0] 		    ALUResultW;
    logic [31:0] 		    ReadDataW;
    logic [31:0] 		    PCPlus4W;
    logic [31:0] 		    ResultW;
-   logic [31:0]         LoadOutW, WriteData_M;
+   logic [31:0]         LoadOutW;
 
    // Fetch stage pipeline register and logic
    mux2    #(32) pcmux(PCPlus4F, PCTargetE, PCSrcE, PCNextF);
@@ -436,9 +434,9 @@ module datapath(input logic clk, reset,
    adder         branchadd(ImmExtE, PCE, PCTargetE);
 
    // Memory stage pipeline register
-   flopr  #(133) regM(clk, reset, 
-                      {ALUResultE, WriteDataE, RdE, PCPlus4E, RD2E},
-                      {ALUResultM, WriteData_M, RdM, PCPlus4M, RD2M});
+   flopr  #(101) regM(clk, reset, 
+                      {ALUResultE, WriteDataE, RdE, PCPlus4E},
+                      {ALUResultM, RD2M, RdM, PCPlus4M});
    store st (RD2M, ReadDataM, ALUResultM[1:0], StoreTypeM, WriteDataM); // M stage
    
    // Writeback stage pipeline register and logic
