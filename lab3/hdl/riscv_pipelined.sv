@@ -78,7 +78,7 @@
 //   sw           0100011   010       immediate
 //   jal          1101111   immediate immediate
 
-
+/*
 module testbench();
 
    logic        clk;
@@ -121,7 +121,7 @@ module testbench();
            end
 	end
      end
-endmodule
+endmodule     
 
 module top(input  logic        clk, reset, 
            output logic [31:0] WriteDataM, DataAdrM, 
@@ -135,7 +135,7 @@ module top(input  logic        clk, reset,
    imem imem (PCF, InstrF);
    dmem dmem (clk, MemWriteM, DataAdrM, WriteDataM, ReadDataM);
    
-endmodule
+endmodule     */
 
 module riscv(input  logic        clk, reset,
              output logic [31:0] PCF,
@@ -673,7 +673,7 @@ module mux3 #(parameter WIDTH = 8)
 
    assign y = s[1] ? d2 : (s[0] ? d1 : d0); 
 endmodule
-
+/*
 module imem (input  logic [31:0] a,
 	     output logic [31:0] rd);
    
@@ -693,7 +693,7 @@ module dmem (input  logic        clk, we,
    always_ff @(posedge clk)
      if (we) RAM[a[31:2]] <= wd;
    
-endmodule // dmem
+endmodule // dmem */
 
 module alu(input  logic [31:0] a, b,
            input logic [3:0]   alucontrol,
